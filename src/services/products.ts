@@ -47,7 +47,12 @@ function fromCloud(item: CloudProduct): Product {
 
 function localProducts(): Product[] {
   const currentUser = getSession()?.user || demoUser
-  return readLocal<Product[]>(PRODUCTS_KEY, mockProducts).map(product => product.seller.id === demoUser.id ? { ...product, seller: currentUser } : product)
+  return readLocal<Product[]>(PRODUCTS_KEY, mockProducts).map(product => {
+    // Refresh built-in demo listings without overwriting user-created local listings.
+    const seed = mockProducts.find(item => item.id === product.id)
+    const item = seed && product.seller.id !== demoUser.id ? { ...seed, status: product.status } : product
+    return item.seller.id === demoUser.id ? { ...item, seller: currentUser } : item
+  })
 }
 
 function ownedLocalProduct(id: string): Product {
@@ -69,7 +74,7 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
     (!filters.category || filters.category === 'all' || product.category === filters.category) &&
     (!keyword || `${product.title} ${product.description}`.toLowerCase().includes(keyword))
   )
-  return products.sort((a, b) => filters.sort === 'priceAsc' ? a.price - b.price : filters.sort === 'priceDesc' ? b.price - a.price : b.createdAt.localeCompare(a.createdAt))
+  return products.sort((a, b) => filters.sort === 'priceAsc' ? a.price - b.price : filters.sort === 'priceDesc' ? b.price - a.price : Date.parse(b.createdAt) - Date.parse(a.createdAt))
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
@@ -113,7 +118,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
 export async function getMyProducts(): Promise<Product[]> {
   if (getDataMode() === 'cloud') return (await cloudCall<CloudProduct[]>('getMyProducts')).map(fromCloud)
   if (getDataMode() === 'api') return apiRequest<Product[]>('/me/products')
-  return localProducts().filter(product => product.seller.id === demoUser.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  return localProducts().filter(product => product.seller.id === demoUser.id).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
 }
 
 export async function setProductStatus(id: string, status: ProductStatus): Promise<void> {

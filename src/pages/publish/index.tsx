@@ -1,12 +1,16 @@
-import { Image, Input, Picker, Text, Textarea, View } from '@tarojs/components'
+import { Input, Text, Textarea, View } from '@tarojs/components'
 import Taro, { getCurrentInstance, useDidShow } from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
+import AppButton from '../../components/AppButton'
+import FormSection from '../../components/FormSection'
+import Icon from '../../components/Icon'
+import ImageUploader from '../../components/ImageUploader'
 import TabNav from '../../components/TabNav'
 import { categories } from '../../data/mock'
-import { createProduct, getProduct, updateProduct } from '../../services/products'
 import { getDataMode, isH5CloudFallback } from '../../services/mode'
-import { removeMockImage, uploadImage } from '../../services/upload'
+import { createProduct, getProduct, updateProduct } from '../../services/products'
 import { readLocal, writeLocal } from '../../services/storage'
+import { removeMockImage, uploadImage } from '../../services/upload'
 import type { CategoryId } from '../../types/market'
 
 const conditions = ['全新未拆', '九成新', '八成新', '七成新及以下']
@@ -22,10 +26,12 @@ export default function PublishPage() {
   const [originalPrice, setOriginalPrice] = useState(draft?.originalPrice || '')
   const [category, setCategory] = useState<CategoryId>(draft?.category || 'books')
   const [condition, setCondition] = useState(draft?.condition || '九成新')
-  const [campus, setCampus] = useState(draft?.campus || '北区校区')
+  const [campus, setCampus] = useState(draft?.campus || '北校区')
   const [images, setImages] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const busyRef = useRef(false)
   const completedRef = useRef(false)
+
   useEffect(() => {
     if (!editId && !submitting && !completedRef.current) writeLocal(DRAFT_KEY, { title, description, price, originalPrice, category, condition, campus })
   }, [editId, submitting, title, description, price, originalPrice, category, condition, campus])
@@ -44,19 +50,20 @@ export default function PublishPage() {
       const result = await Taro.chooseImage({ count: 3 - images.length, sizeType: ['compressed'], sourceType: ['album', 'camera'] })
       setImages(current => [...current, ...result.tempFilePaths].slice(0, 3))
     } catch (error) {
-      if ((error as Error).message && !String((error as Error).message).includes('cancel')) Taro.showToast({ title: '选择图片失败', icon: 'none' })
+      if (!String((error as Error).message).includes('cancel')) Taro.showToast({ title: '选择图片失败，请再试一次', icon: 'none' })
     }
   }
 
   const submit = async () => {
-    if (submitting) return
-    if (!title.trim() || title.trim().length < 2) return Taro.showToast({ title: '请填写至少 2 个字的标题', icon: 'none' })
-    if (description.trim().length < 5) return Taro.showToast({ title: '商品描述至少 5 个字', icon: 'none' })
-    if (!Number.isFinite(Number(price)) || Number(price) <= 0 || Number(price) > 100000 || Math.abs(Number(price) * 100 - Math.round(Number(price) * 100)) > 0.00001) return Taro.showToast({ title: '请输入正确的价格（最多两位小数）', icon: 'none' })
+    if (busyRef.current) return
+    if (title.trim().length < 2) return Taro.showToast({ title: '商品名称至少写 2 个字', icon: 'none' })
+    if (description.trim().length < 5) return Taro.showToast({ title: '商品描述至少写 5 个字', icon: 'none' })
+    if (!Number.isFinite(Number(price)) || Number(price) <= 0 || Number(price) > 100000 || Math.abs(Number(price) * 100 - Math.round(Number(price) * 100)) > 0.00001) return Taro.showToast({ title: '价格需大于 0，最多两位小数', icon: 'none' })
     if (originalPrice && (!Number.isFinite(Number(originalPrice)) || Number(originalPrice) <= 0 || Number(originalPrice) > 100000 || Math.abs(Number(originalPrice) * 100 - Math.round(Number(originalPrice) * 100)) > 0.00001)) return Taro.showToast({ title: '原价最多保留两位小数', icon: 'none' })
-    if (!campus.trim()) return Taro.showToast({ title: '请填写交易校区', icon: 'none' })
+    if (!campus.trim()) return Taro.showToast({ title: '请填写方便面交的校区', icon: 'none' })
     if (getDataMode() === 'cloud' && !images.length) return Taro.showToast({ title: '请上传至少一张实物图', icon: 'none' })
 
+    busyRef.current = true
     setSubmitting(true)
     const newlySaved: string[] = []
     try {
@@ -70,25 +77,26 @@ export default function PublishPage() {
       if (editId) await updateProduct(editId, input)
       else await createProduct(input)
       if (!editId) { completedRef.current = true; Taro.removeStorageSync(DRAFT_KEY) }
-      Taro.showToast({ title: editId ? '修改成功' : '发布成功', icon: 'success' })
+      Taro.showToast({ title: editId ? '修改已保存' : '发布成功', icon: 'success' })
       setTimeout(() => Taro.reLaunch({ url: '/pages/my-listings/index' }), 800)
     } catch (error) {
       await Promise.all(newlySaved.map(removeMockImage))
-      Taro.showToast({ title: (error as Error).message || '发布失败', icon: 'none' })
-    } finally { setSubmitting(false) }
+      Taro.showToast({ title: (error as Error).message || '保存失败，请稍后重试', icon: 'none' })
+    } finally { busyRef.current = false; setSubmitting(false) }
   }
 
   return <View className='page page--with-nav'>
-    <View className='page-heading page-heading--publish'><Text className='eyebrow'>PASS IT ON</Text><Text className='page-heading__title'>{editId ? '编辑商品' : '发布你的闲置'}</Text><Text className='page-heading__desc'>让好东西，找到下一个喜欢它的人。</Text></View>
+    <View className='page-heading page-heading--publish'><Text className='page-heading__eyebrow'>SHARE YOUR FIND</Text><Text className='page-heading__title'>{editId ? '编辑这件好物' : '发布一件闲置'}</Text><Text className='page-heading__desc'>拍张照、写几句，让好东西继续流动。</Text></View>
     <View className='content-pad publish-form'>
-      {isH5CloudFallback() && <Text className='mode-banner'>H5 当前使用本地演示数据；真实发布请在微信小程序中操作。</Text>}
-      <View className='form-card'><Text className='form-label'>商品照片 <Text className='form-label__optional'>最多 3 张</Text></Text><View className='upload-grid'>{images.map((image, index) => <View key={`${image}-${index}`} className='upload-item'><Image src={image} mode='aspectFill' onClick={() => Taro.previewImage({ current: image, urls: images })} /><Text className='upload-item__remove' onClick={() => setImages(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</Text></View>)}{images.length < 3 && <View className='upload-add' onClick={chooseImages}><Text>＋</Text><Text>添加照片</Text></View>}</View><Text className='form-hint'>清晰的实物图更容易获得关注{getDataMode() === 'mock' && Taro.getEnv() === Taro.ENV_TYPE.WEAPP ? '；单张不超过 3 MB' : ''}</Text></View>
-      <View className='form-card'><Text className='form-label'>商品信息</Text><Input className='form-input' maxlength={40} value={title} onInput={event => setTitle(event.detail.value)} placeholder='给商品起个吸引人的标题' /><Textarea className='form-textarea' maxlength={500} value={description} onInput={event => setDescription(event.detail.value)} placeholder='描述新旧程度、使用感受及交易方式...' /></View>
-      <View className='form-card'><Text className='form-label'>定价与分类</Text><View className='form-row'><Text>转让价格</Text><View className='form-row__input'><Text>¥</Text><Input type='digit' value={price} onInput={event => setPrice(event.detail.value)} placeholder='0.00' /></View></View><View className='form-row'><Text>购入原价 <Text className='form-label__optional'>选填</Text></Text><View className='form-row__input'><Text>¥</Text><Input type='digit' value={originalPrice} onInput={event => setOriginalPrice(event.detail.value)} placeholder='0.00' /></View></View><Picker mode='selector' range={categories.map(item => item.name)} value={categories.findIndex(item => item.id === category)} onChange={event => setCategory(categories[Number(event.detail.value)].id)}><View className='form-row'><Text>商品分类</Text><Text className='form-row__value'>{categories.find(item => item.id === category)?.name} ›</Text></View></Picker><Picker mode='selector' range={conditions} value={conditions.indexOf(condition)} onChange={event => setCondition(conditions[Number(event.detail.value)])}><View className='form-row'><Text>新旧程度</Text><Text className='form-row__value'>{condition} ›</Text></View></Picker></View>
-      <View className='form-card'><Text className='form-label'>交易地点</Text><View className='form-row'><Text>所在校区</Text><Input className='form-campus' maxlength={60} value={campus} onInput={event => setCampus(event.detail.value)} placeholder='例如：北区校区' /></View><Text className='form-hint'>建议选择校内公共地点当面交易</Text></View>
-      <View className='button-primary button-primary--wide' onClick={submit}>{submitting ? '保存中...' : (editId ? '保存修改' : '立即发布')}</View>
-      {!editId && <Text className='form-hint draft-hint'>文字内容会自动暂存在本机；离开页面后需重新选择照片</Text>}
-      <Text className='publish-footnote'>发布即代表你同意遵守校园交易规范</Text>
+      {isH5CloudFallback() && <Text className='mode-banner'>H5 当前使用本机演示数据。</Text>}
+      <View className='publish-steps'><View><Icon name='camera' size='sm' /><Text>实物照片</Text></View><Text>→</Text><View><Icon name='edit' size='sm' /><Text>简单介绍</Text></View><Text>→</Text><View><Icon name='check' size='sm' /><Text>发布好物</Text></View></View>
+      <FormSection title='先放上照片' hint='选填 · 最多 3 张'><ImageUploader images={images} onChoose={chooseImages} onRemove={index => setImages(current => current.filter((_, itemIndex) => itemIndex !== index))} />{getDataMode() === 'mock' && Taro.getEnv() === Taro.ENV_TYPE.WEAPP && <Text className='form-hint'>演示模式单张照片不超过 3 MB</Text>}</FormSection>
+      <FormSection title='介绍一下它'><View className='form-field'><Text className='form-field__label'>商品名称 <Text>*</Text></Text><Input className='form-input' maxlength={40} value={title} onInput={event => setTitle(event.detail.value)} placeholder='例如：九成新高数教材，附笔记' /></View><View className='form-field'><View className='form-field__label-row'><Text className='form-field__label'>商品描述 <Text>*</Text></Text><Text>{description.length}/500</Text></View><Textarea className='form-textarea' maxlength={500} value={description} onInput={event => setDescription(event.detail.value)} placeholder='说说使用情况、瑕疵和方便面交的时间…' /></View></FormSection>
+      <FormSection title='价格与分类'><View className='price-fields'><View className='form-field'><Text className='form-field__label'>转让价 <Text>*</Text></Text><View className='price-input'><Text>¥</Text><Input type='digit' value={price} onInput={event => setPrice(event.detail.value)} placeholder='0.00' /></View></View><View className='form-field'><Text className='form-field__label'>购入价 <Text className='form-field__optional'>选填</Text></Text><View className='price-input price-input--muted'><Text>¥</Text><Input type='digit' value={originalPrice} onInput={event => setOriginalPrice(event.detail.value)} placeholder='0.00' /></View></View></View><Text className='form-field__label form-field__label--spaced'>选择分类</Text><View className='form-choice-grid'>{categories.map(item => <View key={item.id} className={`form-choice ${category === item.id ? 'is-selected' : ''}`} onClick={() => setCategory(item.id)}><Icon name={item.icon} size='sm' /><Text>{item.name}</Text></View>)}</View><Text className='form-field__label form-field__label--spaced'>新旧程度</Text><View className='condition-choices'>{conditions.map(item => <Text key={item} className={`chip ${condition === item ? 'chip--active' : ''}`} onClick={() => setCondition(item)}>{item}</Text>)}</View></FormSection>
+      <FormSection title='约个面交地点'><View className='form-field'><Text className='form-field__label'>所在校区 <Text>*</Text></Text><Input className='form-input' maxlength={60} value={campus} onInput={event => setCampus(event.detail.value)} placeholder='例如：北校区' /></View><Text className='form-hint'>建议约在图书馆、食堂等校内公共区域</Text></FormSection>
+      <AppButton block onClick={submit} loading={submitting} className='publish-submit'>{editId ? '保存修改' : '发布好物'}</AppButton>
+      {!editId && <Text className='publish-footnote'>文字会自动保存在本机；离开后需重新选择照片</Text>}
+      <Text className='publish-footnote'>请如实描述商品，守护友好的校园交易氛围</Text>
     </View>
     <TabNav active='publish' />
   </View>

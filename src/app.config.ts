@@ -10,9 +10,9 @@ export default defineAppConfig({
     'pages/profile/edit'
   ],
   window: {
-    navigationBarTitleText: 'CampusMarket',
-    navigationBarBackgroundColor: '#f7f9f7',
+    navigationBarTitleText: '校园集市',
+    navigationBarBackgroundColor: '#f5f8f7',
     navigationBarTextStyle: 'black',
-    backgroundColor: '#f7f9f7'
+    backgroundColor: '#f5f8f7'
   }
 })

@@ -1,34 +1,60 @@
-import { ScrollView, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
+import EmptyState from '../../components/EmptyState'
+import Icon from '../../components/Icon'
 import ProductCard from '../../components/ProductCard'
+import ProductGridSkeleton from '../../components/ProductGridSkeleton'
+import SearchBar from '../../components/SearchBar'
 import SectionTitle from '../../components/SectionTitle'
 import TabNav from '../../components/TabNav'
-import { categories } from '../../data/mock'
-import { getProducts } from '../../services/products'
+import { categories, demoUser } from '../../data/mock'
+import { getCurrentUser } from '../../services/auth'
 import { isH5CloudFallback } from '../../services/mode'
+import { getProducts } from '../../services/products'
 import type { Product } from '../../types/market'
+
+const goExplore = (query = '') => Taro.reLaunch({ url: `/pages/categories/index${query}` })
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
-  useDidShow(() => { getProducts().then(setProducts).catch(error => Taro.showToast({ title: error.message, icon: 'none' })) })
+  const [loading, setLoading] = useState(true)
+  const [school, setSchool] = useState(demoUser.school)
+  useDidShow(() => {
+    setLoading(true)
+    getProducts().then(setProducts).catch(error => Taro.showToast({ title: error.message, icon: 'none' })).finally(() => setLoading(false))
+    getCurrentUser().then(user => setSchool(user.school)).catch(() => undefined)
+  })
 
-  return <View className='page page--with-nav'>
+  return <View className='page page--with-nav home-page'>
     <View className='home-hero'>
-      <View className='home-hero__top'><View><Text className='eyebrow'>CAMPUSMARKET · 校园好物循环</Text><Text className='home-hero__title'>让闲置，遇见下一个主人。</Text></View><Text className='home-hero__leaf'>✳</Text></View>
-      <View className='search-box search-box--entry' onClick={() => Taro.reLaunch({ url: '/pages/categories/index' })}><Text>⌕</Text><Text className='search-box__prompt'>搜一搜，发现校园好物</Text></View>
-      <View className='home-hero__footer'><Text>📍 北区校区及周边</Text><Text>同校交易 · 安心面交</Text></View>
+      <View className='home-brand'>
+        <View className='home-brand__mark'><Text>C</Text></View>
+        <View><Text className='home-brand__name'>CampusMarket</Text><Text className='home-brand__sub'>校园集市</Text></View>
+        <View className='home-brand__campus'><Icon name='pin' size='sm' /><Text>{school}</Text></View>
+      </View>
+      <View className='home-hero__copy'><Text className='home-hero__eyebrow'>让每件好物，都有下一站</Text><Text className='home-hero__title'>发现同学的好东西，<Text>让闲置继续发光。</Text></Text><Text className='home-hero__desc'>在熟悉的校园里，买卖都更轻松。</Text></View>
+      <SearchBar className='home-hero__search' onClick={() => goExplore()} />
+      <View className='home-hero__promise'><Icon name='shield' size='sm' /><Text>同校面交 · 当面验货更安心</Text></View>
     </View>
 
     <View className='content-pad'>
-      {isH5CloudFallback() && <Text className='mode-banner'>H5 当前为本地演示模式；真实数据请在微信小程序中查看。</Text>}
-      <SectionTitle title='逛逛分类' subtitle='找到你需要的' action='全部分类' onAction={() => Taro.reLaunch({ url: '/pages/categories/index' })} />
-      <ScrollView scrollX className='category-scroll'><View className='category-row'>{categories.map(category => <View key={category.id} className='category-tile' onClick={() => Taro.reLaunch({ url: `/pages/categories/index?category=${category.id}` })}><Text className='category-tile__emoji'>{category.emoji}</Text><Text>{category.name}</Text></View>)}</View></ScrollView>
+      {isH5CloudFallback() && <Text className='mode-banner'>H5 当前使用本机演示数据。</Text>}
+      <SectionTitle title='逛逛分类' subtitle='从校园日常开始发现' action='全部分类' onAction={() => goExplore()} />
+      <View className='category-grid'>
+        {categories.map((item, index) => <View key={item.id} className='category-tile' onClick={() => goExplore(`?category=${item.id}`)}><View className={`category-tile__icon category-tile__icon--${index % 4}`}><Icon name={item.icon} size='lg' /></View><Text>{item.shortName}</Text></View>)}
+        <View className='category-tile' onClick={() => goExplore('?keyword=%E6%AF%95%E4%B8%9A')}><View className='category-tile__icon category-tile__icon--3'><Icon name='spark' size='lg' /></View><Text>毕业季</Text></View>
+        <View className='category-tile' onClick={() => goExplore()}><View className='category-tile__icon category-tile__icon--0'><Icon name='grid' size='lg' /></View><Text>全部好物</Text></View>
+      </View>
 
-      <View className='home-promo' onClick={() => Taro.reLaunch({ url: '/pages/publish/index' })}><View><Text className='home-promo__tag'>毕业季 · 闲置计划</Text><Text className='home-promo__title'>好东西，值得被看见</Text><Text className='home-promo__desc'>发布你的闲置，让它继续发光</Text></View><Text className='home-promo__arrow'>↗</Text></View>
+      <View className='feature-card' onClick={() => goExplore('?keyword=%E6%AF%95%E4%B8%9A')}>
+        <View className='feature-card__content'><Text className='feature-card__eyebrow'>GRADUATION SEASON</Text><Text className='feature-card__title'>毕业季 · 好物接力</Text><Text className='feature-card__desc'>带不走的心爱物品，留给下一位同学</Text><View className='feature-card__link'><Text>去看看</Text><Icon name='arrow' size='sm' /></View></View>
+        <View className='feature-card__art'><View className='feature-card__art-circle'><Icon name='package' size='lg' /></View><View className='feature-card__art-dot' /></View>
+      </View>
 
-      <SectionTitle title='最新上架' subtitle='校园里的新鲜好物' action='查看更多' onAction={() => Taro.reLaunch({ url: '/pages/categories/index' })} />
-      <View className='product-grid'>{products.map(product => <ProductCard key={product.id} product={product} />)}</View>
+      <SectionTitle title='刚刚上架' subtitle='发现身边的新鲜闲置' action='查看更多' onAction={() => goExplore()} />
+      {loading ? <ProductGridSkeleton /> : products.length ? <View className='product-grid'>{products.map(product => <ProductCard key={product.id} product={product} />)}</View> : <EmptyState kind='search' title='还没有上架的好物' description='来发布第一件闲置吧' action='去发布' onAction={() => Taro.reLaunch({ url: '/pages/publish/index' })} />}
+      <View className='home-safety'><Icon name='shield' size='md' /><View><Text>安心交易小提示</Text><Text>约在校内公共区域，见面验货后再付款</Text></View></View>
     </View>
     <TabNav active='index' />
   </View>

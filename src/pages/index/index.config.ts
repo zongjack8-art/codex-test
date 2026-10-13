@@ -1,1 +1,1 @@
-export default definePageConfig({ navigationBarTitleText: 'CampusMarket' })
+export default definePageConfig({ navigationBarTitleText: '校园集市' })

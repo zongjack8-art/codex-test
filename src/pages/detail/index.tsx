@@ -1,10 +1,15 @@
 import { Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { getCurrentInstance, useDidShow } from '@tarojs/taro'
 import { useRef, useState } from 'react'
+import AppButton from '../../components/AppButton'
 import Avatar from '../../components/Avatar'
+import { Badge } from '../../components/Badge'
 import EmptyState from '../../components/EmptyState'
-import { getFavoriteIds, getProduct, toggleFavorite } from '../../services/products'
+import Icon from '../../components/Icon'
+import ProductPhoto from '../../components/ProductPhoto'
+import { getFavoriteIds, getProduct, getProducts, toggleFavorite } from '../../services/products'
 import type { Product } from '../../types/market'
+import { formatProductTime } from '../../utils/format'
 
 export default function DetailPage() {
   const id = getCurrentInstance().router?.params?.id || ''
@@ -12,13 +17,14 @@ export default function DetailPage() {
   const [favorite, setFavorite] = useState(false)
   const [loading, setLoading] = useState(true)
   const [favoriteBusy, setFavoriteBusy] = useState(false)
+  const [sellerCount, setSellerCount] = useState<number | null>(null)
   const favoriteBusyRef = useRef(false)
   useDidShow(() => {
     setLoading(true)
-    getProduct(id)
-      .then(setProduct)
-      .catch(error => Taro.showToast({ title: error.message, icon: 'none' }))
-      .finally(() => setLoading(false))
+    getProduct(id).then(item => {
+      setProduct(item)
+      if (item) getProducts().then(items => setSellerCount(items.filter(value => value.seller.id === item.seller.id).length)).catch(() => undefined)
+    }).catch(error => Taro.showToast({ title: error.message, icon: 'none' })).finally(() => setLoading(false))
     getFavoriteIds().then(ids => setFavorite(ids.includes(id))).catch(() => undefined)
   })
 
@@ -30,25 +36,31 @@ export default function DetailPage() {
       const next = await toggleFavorite(id)
       setFavorite(next)
       Taro.showToast({ title: next ? '已加入收藏' : '已取消收藏', icon: 'none' })
-    }
-    catch (error) { Taro.showToast({ title: (error as Error).message, icon: 'none' }) }
+    } catch (error) { Taro.showToast({ title: (error as Error).message, icon: 'none' }) }
     finally { favoriteBusyRef.current = false; setFavoriteBusy(false) }
   }
 
-  const contact = () => {
-    if (product?.status !== 'selling') return Taro.showToast({ title: '该商品当前不可交易', icon: 'none' })
-    Taro.showModal({ title: '联系卖家', content: '请通过学校认证的线下渠道联系卖家并当面交易。聊天功能待后端接入后开放。', showCancel: false })
-  }
+  const contact = () => Taro.showModal({ title: '联系卖家', content: '当前是本机演示，暂未开通站内联系。真实交易请约在校内公共区域，当面验货后再付款。', showCancel: false })
 
-  if (loading) return <View className='page detail-loading'><Text>正在加载商品...</Text></View>
-  if (!product) return <View className='page'><EmptyState icon='📦' title='商品不存在或已下架' /><View className='button-outline empty-action' onClick={() => Taro.navigateBack()}>返回逛逛</View></View>
+  if (loading) return <View className='page detail-loading'><View className='detail-skeleton'><View /><View /><View /></View></View>
+  if (!product) return <View className='page'><EmptyState kind='error' title='商品暂时找不到了' description='它可能已被删除，继续逛逛别的好物吧' action='返回首页' onAction={() => Taro.reLaunch({ url: '/pages/index/index' })} /></View>
+
   return <View className='page page--detail'>
-    <ScrollView scrollX className='detail-gallery'><View className='detail-gallery__inner'>{product.images.length ? product.images.map((image, index) => <Image key={`${image}-${index}`} src={image} mode='aspectFill' className='detail-gallery__image' onClick={() => Taro.previewImage({ current: image, urls: product.images })} />) : <View className='detail-gallery__placeholder' style={{ backgroundColor: product.coverColor }}><Text>{product.coverEmoji}</Text></View>}</View></ScrollView>
-    {product.images.length > 0 && <Text className='detail-gallery__hint'>左右滑动查看 · 点击图片可放大（共 {product.images.length} 张）</Text>}
-    <View className='detail-main'><View className='detail-price'><Text className='price'><Text className='price__currency'>¥</Text>{product.price}</Text>{product.originalPrice && <Text className='detail-price__old'>原价 ¥{product.originalPrice}</Text>}<Text className='detail-price__badge'>{product.condition}</Text></View><Text className='detail-title'>{product.title}</Text><Text className='detail-location'>📍 {product.campus} · {product.status === 'sold' ? '已售出' : product.status === 'offline' ? '已下架' : '支持当面交易'}</Text></View>
-    <View className='detail-block'><Text className='detail-block__title'>商品描述</Text><Text className='detail-description'>{product.description}</Text></View>
-    <View className='detail-block detail-seller'><Avatar className='detail-seller__avatar' value={product.seller.avatar} /><View><Text className='detail-seller__name'>{product.seller.nickname}</Text><Text className='detail-seller__campus'>{product.seller.campus} · 校园卖家</Text></View><Text className='detail-seller__trust'>同校面交</Text></View>
-    <View className='detail-tips'>🛡️ 交易提醒：请当面验货，勿提前向陌生人转账。</View>
-    <View className='detail-actions'><View className={`detail-actions__favorite ${favorite ? 'is-active' : ''} ${favoriteBusy ? 'is-busy' : ''}`} onClick={onFavorite}><Text>{favorite ? '♥' : '♡'}</Text><Text>{favorite ? '已收藏' : '收藏'}</Text></View><View className={`button-primary detail-actions__contact ${product.status !== 'selling' ? 'button-primary--disabled' : ''}`} onClick={contact}>{product.status === 'selling' ? '联系卖家' : '当前不可交易'}</View></View>
+    <View className='detail-gallery-wrap'>
+      {product.images.length ? <ScrollView scrollX className='detail-gallery'><View className='detail-gallery__inner'>{product.images.map((image, index) => <Image key={`${image}-${index}`} src={image} mode='aspectFill' className='detail-gallery__image' onClick={() => Taro.previewImage({ current: image, urls: product.images })} />)}</View></ScrollView> : <ProductPhoto className='detail-gallery__fallback' />}
+      {product.images.length > 0 && <Text className='detail-gallery__count'>{product.images.length} 张图片 · 点击查看</Text>}
+    </View>
+    <View className='detail-content'>
+      <View className='detail-summary'>
+        <View className='detail-summary__price'><Text className='price'><Text className='price__currency'>¥</Text>{product.price}</Text>{product.originalPrice && <Text className='detail-summary__old'>原价 ¥{product.originalPrice}</Text>}</View>
+        <Text className='detail-summary__title'>{product.title}</Text>
+        <View className='detail-summary__meta'><Badge tone='primary'>{product.condition}</Badge><Text>{formatProductTime(product.createdAt)}</Text>{product.status !== 'selling' && <Badge tone={product.status === 'sold' ? 'neutral' : 'warning'}>{product.status === 'sold' ? '已售' : '已下架'}</Badge>}</View>
+      </View>
+      <View className='detail-section'><Text className='detail-section__title'>关于这件好物</Text><Text className='detail-section__body'>{product.description}</Text></View>
+      <View className='detail-section detail-trade'><Text className='detail-section__title'>校内交易</Text><View className='detail-trade__row'><View className='detail-trade__icon'><Icon name='pin' size='md' /></View><View><Text>面交地点</Text><Text>{product.campus} · 可与卖家约校内公共区域</Text></View></View><View className='detail-trade__row'><View className='detail-trade__icon'><Icon name='shield' size='md' /></View><View><Text>安心提醒</Text><Text>见面确认商品状态，再完成交易</Text></View></View></View>
+      <View className='detail-section detail-seller'><Text className='detail-section__title'>发布同学</Text><View className='detail-seller__row'><Avatar className='detail-seller__avatar' value={product.seller.avatar} /><View className='detail-seller__info'><Text className='detail-seller__name'>{product.seller.nickname}</Text><Text>{product.seller.campus} · 校园用户</Text></View>{sellerCount !== null && <Badge tone='accent'>在售 {sellerCount} 件</Badge>}</View></View>
+      <View className='detail-safe-note'><Icon name='shield' size='sm' /><Text>选择校内公共地点面交，请勿提前转账。</Text></View>
+    </View>
+    <View className='detail-actions'><View className={`detail-actions__favorite ${favorite ? 'is-active' : ''} ${favoriteBusy ? 'is-busy' : ''}`} onClick={onFavorite}><Icon name='heart' size='md' /><Text>{favorite ? '已收藏' : '收藏'}</Text></View><AppButton className='detail-actions__contact' onClick={contact} disabled={product.status !== 'selling'}>{product.status === 'selling' ? '联系卖家' : '当前不可交易'}</AppButton></View>
   </View>
 }

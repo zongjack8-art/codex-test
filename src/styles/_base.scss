@@ -1,0 +1,22 @@
+@use './tokens' as t;
+
+page, body { background: t.$background; color: t.$text-primary; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+view, text, input, textarea, button { box-sizing: border-box; }
+.page { min-height: 100vh; background: t.$background; }
+.page--with-nav { padding-bottom: calc(144px + env(safe-area-inset-bottom)); }
+.content-pad { padding: 0 t.$space-6 t.$space-8; }
+.price { color: t.$price; font-size: t.$font-price; font-weight: 800; line-height: 1.1; white-space: nowrap; }
+.price__currency { margin-right: 2px; font-size: 24px; font-weight: 700; }
+
+.page-heading { padding: 42px t.$space-6 36px; border-radius: 0 0 t.$radius-card t.$radius-card; background: t.$surface-tint; }
+.page-heading__eyebrow { display: block; color: t.$primary; font-size: t.$font-caption; font-weight: 800; letter-spacing: 2px; }
+.page-heading__title { display: block; margin-top: 10px; color: t.$text-primary; font-size: t.$font-page; font-weight: 800; line-height: 1.28; }
+.page-heading__desc { display: block; margin-top: 9px; color: t.$text-secondary; font-size: t.$font-secondary; line-height: 1.55; }
+.page-heading + .content-pad { padding-top: t.$space-6; }
+.page-heading--publish { background: t.$sky; }
+.mode-banner { display: block; margin: 0 0 t.$space-4; padding: 16px 20px; border-radius: t.$radius-medium; background: t.$warning-light; color: t.$warning; font-size: t.$font-secondary; line-height: 1.5; }
+
+@media (min-width: 900px) {
+  .page { max-width: 750px; margin: 0 auto; box-shadow: 0 0 50px rgba(21, 62, 63, .06); }
+  .tab-nav, .detail-actions { left: 50%; right: auto; width: 750px; transform: translateX(-50%); }
+}
