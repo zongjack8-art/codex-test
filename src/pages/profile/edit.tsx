@@ -1,9 +1,9 @@
 import { Input, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Avatar from '../../components/Avatar'
 import { getCurrentUser, updateProfile } from '../../services/auth'
-import { uploadImage } from '../../services/upload'
+import { removeMockImage, uploadImage } from '../../services/upload'
 
 export default function ProfileEditPage() {
   const [nickname, setNickname] = useState('')
@@ -11,7 +11,8 @@ export default function ProfileEditPage() {
   const [campus, setCampus] = useState('')
   const [avatar, setAvatar] = useState('🎓')
   const [saving, setSaving] = useState(false)
-  useDidShow(() => { getCurrentUser().then(user => { setNickname(user.nickname); setSchool(user.school); setCampus(user.campus); setAvatar(user.avatar) }).catch(error => Taro.showToast({ title: error.message, icon: 'none' })) })
+  const originalAvatar = useRef('🎓')
+  useDidShow(() => { getCurrentUser().then(user => { setNickname(user.nickname); setSchool(user.school); setCampus(user.campus); setAvatar(user.avatar); originalAvatar.current = user.avatar }).catch(error => Taro.showToast({ title: error.message, icon: 'none' })) })
 
   const chooseAvatar = async () => {
     try { const result = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] }); setAvatar(result.tempFilePaths[0]) }
@@ -21,12 +22,14 @@ export default function ProfileEditPage() {
     if (saving) return
     if (nickname.trim().length < 2 || !school.trim() || !campus.trim()) return Taro.showToast({ title: '请完善昵称、学校和校区', icon: 'none' })
     setSaving(true)
+    let savedAvatar = avatar
     try {
-      const image = avatar === '🎓' || /^(cloud|https?):\/\//.test(avatar) ? avatar : await uploadImage(avatar, 'avatar')
-      await updateProfile({ nickname: nickname.trim(), school: school.trim(), campus: campus.trim(), avatar: image })
+      savedAvatar = avatar === '🎓' || /^(cloud|https?):\/\//.test(avatar) ? avatar : await uploadImage(avatar, 'avatar')
+      await updateProfile({ nickname: nickname.trim(), school: school.trim(), campus: campus.trim(), avatar: savedAvatar })
+      if (originalAvatar.current !== savedAvatar) await removeMockImage(originalAvatar.current)
       Taro.showToast({ title: '资料已保存', icon: 'success' })
       setTimeout(() => Taro.navigateBack(), 700)
-    } catch (error) { Taro.showToast({ title: (error as Error).message, icon: 'none' }) }
+    } catch (error) { if (savedAvatar !== avatar) await removeMockImage(savedAvatar); Taro.showToast({ title: (error as Error).message, icon: 'none' }) }
     finally { setSaving(false) }
   }
 

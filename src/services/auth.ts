@@ -10,7 +10,8 @@ const SESSION_KEY = 'campusmarket.session.v2'
 let cloudSessionConfirmed = false
 
 export function getSession(): Session | null {
-  return readLocal<Session | null>(SESSION_KEY, null)
+  const session = readLocal<Session | null>(SESSION_KEY, null)
+  return getDataMode() === 'mock' && session?.user.id !== demoUser.id ? null : session
 }
 
 export function signOut(): void {
@@ -20,7 +21,7 @@ export function signOut(): void {
 export async function loginWithWechat(): Promise<Session> {
   const mode = getDataMode()
   if (mode === 'mock') {
-    const session = { token: 'demo-only', user: demoUser }
+    const session = { token: 'demo-only', user: getSession()?.user || demoUser }
     writeLocal(SESSION_KEY, session)
     return session
   }
@@ -56,6 +57,6 @@ export async function updateProfile(input: ProfileInput): Promise<UserProfile> {
   if (mode === 'cloud') user = await cloudCall<UserProfile>('updateProfile', { profile: input })
   else if (mode === 'api') user = await apiRequest<UserProfile>('/me', 'PATCH', input)
   else user = { ...demoUser, ...input }
-  writeLocal(SESSION_KEY, { ...getSession(), user })
+  writeLocal(SESSION_KEY, { ...getSession(), ...(mode === 'mock' ? { token: 'demo-only' } : {}), user })
   return user
 }

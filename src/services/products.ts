@@ -1,10 +1,11 @@
 import { demoUser, mockProducts } from '../data/mock'
 import type { Product, ProductFilters, ProductInput, ProductStatus, Seller } from '../types/market'
 import { apiRequest } from './api'
-import { ensureUserSession } from './auth'
+import { ensureUserSession, getSession } from './auth'
 import { cloudCall } from './cloudbase'
 import { getDataMode } from './mode'
 import { readLocal, writeLocal } from './storage'
+import { removeMockImage } from './upload'
 
 const PRODUCTS_KEY = 'campusmarket.products.v2'
 const FAVORITES_KEY = 'campusmarket.favorites.v2'
@@ -45,7 +46,14 @@ function fromCloud(item: CloudProduct): Product {
 }
 
 function localProducts(): Product[] {
-  return readLocal<Product[]>(PRODUCTS_KEY, mockProducts)
+  const currentUser = getSession()?.user || demoUser
+  return readLocal<Product[]>(PRODUCTS_KEY, mockProducts).map(product => product.seller.id === demoUser.id ? { ...product, seller: currentUser } : product)
+}
+
+function ownedLocalProduct(id: string): Product {
+  const product = localProducts().find(item => item.id === id)
+  if (!product || product.seller.id !== demoUser.id) throw new Error('商品不存在或无权操作')
+  return product
 }
 
 export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
@@ -81,8 +89,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
   if (getDataMode() === 'api') return apiRequest<Product>('/products', 'POST', input)
   const product: Product = {
     ...input,
-    id: `local-${Date.now()}`,
-    seller: demoUser,
+    id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    seller: getSession()?.user || demoUser,
     coverEmoji: '🎁',
     coverColor: '#e8efe9',
     createdAt: new Date().toISOString(),
@@ -95,27 +103,33 @@ export async function createProduct(input: ProductInput): Promise<Product> {
 export async function updateProduct(id: string, input: ProductInput): Promise<Product> {
   if (getDataMode() === 'cloud') return fromCloud(await cloudCall<CloudProduct>('updateProduct', { id, product: { ...input, location: input.campus } }))
   if (getDataMode() === 'api') return apiRequest<Product>(`/products/${encodeURIComponent(id)}`, 'PATCH', input)
+  const previous = ownedLocalProduct(id)
   const updated = localProducts().map(item => item.id === id ? { ...item, ...input } : item)
   writeLocal(PRODUCTS_KEY, updated)
+  await Promise.all(previous.images.filter(image => !input.images.includes(image)).map(removeMockImage))
   return updated.find(item => item.id === id) as Product
 }
 
 export async function getMyProducts(): Promise<Product[]> {
   if (getDataMode() === 'cloud') return (await cloudCall<CloudProduct[]>('getMyProducts')).map(fromCloud)
   if (getDataMode() === 'api') return apiRequest<Product[]>('/me/products')
-  return localProducts().filter(product => product.seller.id === demoUser.id)
+  return localProducts().filter(product => product.seller.id === demoUser.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
 export async function setProductStatus(id: string, status: ProductStatus): Promise<void> {
   if (getDataMode() === 'cloud') { await cloudCall('setProductStatus', { id, status }); return }
   if (getDataMode() === 'api') { await apiRequest(`/products/${encodeURIComponent(id)}`, 'PATCH', { status }); return }
+  ownedLocalProduct(id)
   writeLocal(PRODUCTS_KEY, localProducts().map(product => product.id === id ? { ...product, status } : product))
 }
 
 export async function deleteProduct(id: string): Promise<void> {
   if (getDataMode() === 'cloud') { await cloudCall('deleteProduct', { id }); return }
   if (getDataMode() === 'api') { await apiRequest(`/products/${encodeURIComponent(id)}`, 'DELETE'); return }
+  const product = ownedLocalProduct(id)
   writeLocal(PRODUCTS_KEY, localProducts().filter(product => product.id !== id))
+  writeLocal(FAVORITES_KEY, (await getFavoriteIds()).filter(item => item !== id))
+  await Promise.all(product.images.map(removeMockImage))
 }
 
 export async function getFavoriteIds(): Promise<string[]> {
@@ -144,6 +158,7 @@ export async function toggleFavorite(id: string): Promise<boolean> {
   }
   const ids = await getFavoriteIds()
   const favorited = !ids.includes(id)
+  if (favorited && !localProducts().some(product => product.id === id && product.status === 'selling')) throw new Error('该商品当前不可收藏')
   writeLocal(FAVORITES_KEY, favorited ? [...ids, id] : ids.filter(item => item !== id))
   return favorited
 }

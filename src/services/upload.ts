@@ -15,7 +15,15 @@ export async function uploadImage(filePath: string, purpose: 'product' | 'avatar
     const result = await cloudCall<{ fileID: string }>('finalizeImage', { fileID: uploaded.fileID, purpose })
     return result.fileID
   }
-  if (mode === 'mock') return filePath
+  if (mode === 'mock') {
+    if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP || !filePath || /^wxfile:\/\/usr\//.test(filePath) || /^(cloud|https?):\/\//.test(filePath)) return filePath
+    const info = await Taro.getFileInfo({ filePath })
+    if (!('size' in info)) throw new Error('无法读取图片')
+    if (info.size > 3 * 1024 * 1024) throw new Error('演示模式单张图片不能超过 3 MB')
+    const saved = await Taro.saveFile({ tempFilePath: filePath })
+    if (!('savedFilePath' in saved)) throw new Error('保存图片失败，请检查本机存储空间')
+    return saved.savedFilePath
+  }
   if (/^https:\/\//.test(filePath)) return filePath
   const token = getSession()?.token
   const response = await Taro.uploadFile({
@@ -28,4 +36,9 @@ export async function uploadImage(filePath: string, purpose: 'product' | 'avatar
   const payload = JSON.parse(response.data) as { data: { url: string } }
   if (!payload.data?.url) throw new Error('图片上传未返回地址')
   return payload.data.url
+}
+
+export async function removeMockImage(filePath: string): Promise<void> {
+  if (getDataMode() !== 'mock' || Taro.getEnv() !== Taro.ENV_TYPE.WEAPP || !/^wxfile:\/\/usr\//.test(filePath)) return
+  try { await Taro.removeSavedFile({ filePath }) } catch { /* File may already be gone. */ }
 }

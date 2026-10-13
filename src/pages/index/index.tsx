@@ -1,4 +1,4 @@
-import { Input, ScrollView, Text, View } from '@tarojs/components'
+import { ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import ProductCard from '../../components/ProductCard'
@@ -16,7 +16,7 @@ export default function HomePage() {
   return <View className='page page--with-nav'>
     <View className='home-hero'>
       <View className='home-hero__top'><View><Text className='eyebrow'>CAMPUSMARKET · 校园好物循环</Text><Text className='home-hero__title'>让闲置，遇见下一个主人。</Text></View><Text className='home-hero__leaf'>✳</Text></View>
-      <View className='search-box' onClick={() => Taro.reLaunch({ url: '/pages/categories/index' })}><Text>⌕</Text><Input disabled placeholder='搜一搜，发现校园好物' /></View>
+      <View className='search-box search-box--entry' onClick={() => Taro.reLaunch({ url: '/pages/categories/index' })}><Text>⌕</Text><Text className='search-box__prompt'>搜一搜，发现校园好物</Text></View>
       <View className='home-hero__footer'><Text>📍 北区校区及周边</Text><Text>同校交易 · 安心面交</Text></View>
     </View>
 
