@@ -1,0 +1,13 @@
+{
+  "description": "CampusMarket 微信小程序",
+  "projectname": "campusmarket",
+  "appid": "touristappid",
+  "compileType": "miniprogram",
+  "miniprogramRoot": "dist/weapp/",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  }
+}

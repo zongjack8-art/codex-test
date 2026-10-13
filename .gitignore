@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.pnpm-store/
+.cache/
+.swc/
+.DS_Store
+*.log
+.env.local
+.env.*.local
