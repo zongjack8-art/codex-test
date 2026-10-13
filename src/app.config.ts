@@ -6,7 +6,8 @@ export default defineAppConfig({
     'pages/favorites/index',
     'pages/profile/index',
     'pages/detail/index',
-    'pages/my-listings/index'
+    'pages/my-listings/index',
+    'pages/profile/edit'
   ],
   window: {
     navigationBarTitleText: 'CampusMarket',

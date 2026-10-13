@@ -10,7 +10,7 @@ export default function ProductCard({ product, compact = false }: { product: Pro
     <View className='product-card__body'>
       <Text className='product-card__title'>{product.title}</Text>
       <View className='product-card__meta'><Text>{product.condition}</Text><Text>·</Text><Text>{product.campus}</Text></View>
-      <View className='product-card__bottom'><Text className='price'><Text className='price__currency'>¥</Text>{product.price}</Text><Text className='product-card__seller'>{product.seller.avatar} {product.seller.nickname}</Text></View>
+      <View className='product-card__bottom'><Text className='price'><Text className='price__currency'>¥</Text>{product.price}</Text><Text className='product-card__seller'>{/^(cloud|https?):\/\//.test(product.seller.avatar) ? '🎓' : product.seller.avatar} {product.seller.nickname}</Text></View>
     </View>
   </View>
 }

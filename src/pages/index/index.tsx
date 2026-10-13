@@ -6,6 +6,7 @@ import SectionTitle from '../../components/SectionTitle'
 import TabNav from '../../components/TabNav'
 import { categories } from '../../data/mock'
 import { getProducts } from '../../services/products'
+import { isH5CloudFallback } from '../../services/mode'
 import type { Product } from '../../types/market'
 
 export default function HomePage() {
@@ -20,6 +21,7 @@ export default function HomePage() {
     </View>
 
     <View className='content-pad'>
+      {isH5CloudFallback() && <Text className='mode-banner'>H5 当前为本地演示模式；真实数据请在微信小程序中查看。</Text>}
       <SectionTitle title='逛逛分类' subtitle='找到你需要的' action='全部分类' onAction={() => Taro.reLaunch({ url: '/pages/categories/index' })} />
       <ScrollView scrollX className='category-scroll'><View className='category-row'>{categories.map(category => <View key={category.id} className='category-tile' onClick={() => Taro.reLaunch({ url: `/pages/categories/index?category=${category.id}` })}><Text className='category-tile__emoji'>{category.emoji}</Text><Text>{category.name}</Text></View>)}</View></ScrollView>
 

@@ -1,11 +1,23 @@
 export type CategoryId = 'books' | 'digital' | 'daily' | 'sports' | 'fashion' | 'other'
-export type ProductStatus = 'available' | 'sold'
+export type ProductStatus = 'selling' | 'sold' | 'offline'
 
 export interface Seller {
   id: string
   nickname: string
   campus: string
+  school?: string
   avatar: string
+}
+
+export interface UserProfile extends Seller {
+  school: string
+}
+
+export interface ProfileInput {
+  nickname: string
+  avatar: string
+  school: string
+  campus: string
 }
 
 export interface Product {
@@ -43,6 +55,6 @@ export interface ProductFilters {
 }
 
 export interface Session {
-  token: string
-  user: Seller
+  token?: string
+  user: UserProfile
 }

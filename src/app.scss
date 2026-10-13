@@ -157,3 +157,7 @@ view, text, input, textarea { box-sizing: border-box; }
 .listing-card__title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 25px; font-weight: 700; }
 .listing-card__status { color: $muted; font-size: 20px; }
 .listing-card__actions { display: flex; justify-content: flex-end; gap: 25px; margin-top: 18px; padding-top: 17px; border-top: 1px solid #eff2ef; color: $green; font-size: 21px; }
+.listing-card__actions { flex-wrap: wrap; }
+.mode-banner { display: block; margin: 18px 0; padding: 18px 22px; border-radius: 14px; background: #fff5df; color: #83651f; font-size: 21px; line-height: 1.5; }
+.profile-edit-avatar { display: flex; align-items: center; gap: 25px; color: $green; font-size: 23px; }
+.profile-edit-avatar .profile-user__avatar { margin: 0; }

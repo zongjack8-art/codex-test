@@ -1,23 +1,63 @@
 import { demoUser, mockProducts } from '../data/mock'
-import type { Product, ProductFilters, ProductInput, ProductStatus } from '../types/market'
+import type { Product, ProductFilters, ProductInput, ProductStatus, Seller } from '../types/market'
 import { apiRequest } from './api'
+import { ensureUserSession } from './auth'
+import { cloudCall } from './cloudbase'
+import { getDataMode } from './mode'
 import { readLocal, writeLocal } from './storage'
 
-const PRODUCTS_KEY = 'campusmarket.products.v1'
-const FAVORITES_KEY = 'campusmarket.favorites.v1'
+const PRODUCTS_KEY = 'campusmarket.products.v2'
+const FAVORITES_KEY = 'campusmarket.favorites.v2'
+
+interface CloudProduct {
+  _id: string
+  sellerId: string
+  seller?: Seller
+  title: string
+  description: string
+  price: number
+  originalPrice?: number | null
+  category: Product['category']
+  condition: string
+  images: string[]
+  location: string
+  status: ProductStatus
+  createdAt: number
+}
+
+function fromCloud(item: CloudProduct): Product {
+  return {
+    id: item._id,
+    title: item.title,
+    description: item.description,
+    price: item.price,
+    originalPrice: item.originalPrice ?? undefined,
+    category: item.category,
+    condition: item.condition,
+    images: item.images || [],
+    campus: item.location,
+    status: item.status,
+    createdAt: new Date(item.createdAt).toISOString(),
+    seller: item.seller || { id: item.sellerId, nickname: '校园同学', campus: item.location, avatar: '🎓' },
+    coverEmoji: '🎁',
+    coverColor: '#e8efe9'
+  }
+}
 
 function localProducts(): Product[] {
   return readLocal<Product[]>(PRODUCTS_KEY, mockProducts)
 }
 
 export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
-  if (__API_BASE_URL__) {
+  const mode = getDataMode()
+  if (mode === 'cloud') return (await cloudCall<CloudProduct[]>('listProducts', { filters })).map(fromCloud)
+  if (mode === 'api') {
     const query = Object.entries(filters).filter(([, value]) => value).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join('&')
     return apiRequest<Product[]>(`/products${query ? `?${query}` : ''}`)
   }
   const keyword = filters.keyword?.trim().toLowerCase()
   const products = localProducts().filter(product =>
-    product.status === 'available' &&
+    product.status === 'selling' &&
     (!filters.category || filters.category === 'all' || product.category === filters.category) &&
     (!keyword || `${product.title} ${product.description}`.toLowerCase().includes(keyword))
   )
@@ -25,12 +65,20 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
-  if (__API_BASE_URL__) return apiRequest<Product>(`/products/${encodeURIComponent(id)}`)
+  if (getDataMode() === 'cloud') {
+    const item = await cloudCall<CloudProduct | null>('getProduct', { id })
+    return item ? fromCloud(item) : null
+  }
+  if (getDataMode() === 'api') return apiRequest<Product>(`/products/${encodeURIComponent(id)}`)
   return localProducts().find(product => product.id === id) || null
 }
 
 export async function createProduct(input: ProductInput): Promise<Product> {
-  if (__API_BASE_URL__) return apiRequest<Product>('/products', 'POST', input)
+  if (getDataMode() === 'cloud') {
+    await ensureUserSession()
+    return fromCloud(await cloudCall<CloudProduct>('createProduct', { product: { ...input, location: input.campus } }))
+  }
+  if (getDataMode() === 'api') return apiRequest<Product>('/products', 'POST', input)
   const product: Product = {
     ...input,
     id: `local-${Date.now()}`,
@@ -38,40 +86,59 @@ export async function createProduct(input: ProductInput): Promise<Product> {
     coverEmoji: '🎁',
     coverColor: '#e8efe9',
     createdAt: new Date().toISOString(),
-    status: 'available'
+    status: 'selling'
   }
   writeLocal(PRODUCTS_KEY, [product, ...localProducts()])
   return product
 }
 
+export async function updateProduct(id: string, input: ProductInput): Promise<Product> {
+  if (getDataMode() === 'cloud') return fromCloud(await cloudCall<CloudProduct>('updateProduct', { id, product: { ...input, location: input.campus } }))
+  if (getDataMode() === 'api') return apiRequest<Product>(`/products/${encodeURIComponent(id)}`, 'PATCH', input)
+  const updated = localProducts().map(item => item.id === id ? { ...item, ...input } : item)
+  writeLocal(PRODUCTS_KEY, updated)
+  return updated.find(item => item.id === id) as Product
+}
+
 export async function getMyProducts(): Promise<Product[]> {
-  if (__API_BASE_URL__) return apiRequest<Product[]>('/me/products')
+  if (getDataMode() === 'cloud') return (await cloudCall<CloudProduct[]>('getMyProducts')).map(fromCloud)
+  if (getDataMode() === 'api') return apiRequest<Product[]>('/me/products')
   return localProducts().filter(product => product.seller.id === demoUser.id)
 }
 
 export async function setProductStatus(id: string, status: ProductStatus): Promise<void> {
-  if (__API_BASE_URL__) { await apiRequest(`/products/${encodeURIComponent(id)}`, 'PATCH', { status }); return }
+  if (getDataMode() === 'cloud') { await cloudCall('setProductStatus', { id, status }); return }
+  if (getDataMode() === 'api') { await apiRequest(`/products/${encodeURIComponent(id)}`, 'PATCH', { status }); return }
   writeLocal(PRODUCTS_KEY, localProducts().map(product => product.id === id ? { ...product, status } : product))
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  if (__API_BASE_URL__) { await apiRequest(`/products/${encodeURIComponent(id)}`, 'DELETE'); return }
+  if (getDataMode() === 'cloud') { await cloudCall('deleteProduct', { id }); return }
+  if (getDataMode() === 'api') { await apiRequest(`/products/${encodeURIComponent(id)}`, 'DELETE'); return }
   writeLocal(PRODUCTS_KEY, localProducts().filter(product => product.id !== id))
 }
 
 export async function getFavoriteIds(): Promise<string[]> {
-  if (__API_BASE_URL__) return apiRequest<string[]>('/me/favorites/ids')
+  if (getDataMode() === 'cloud') return cloudCall<string[]>('getFavoriteIds')
+  if (getDataMode() === 'api') return apiRequest<string[]>('/me/favorites/ids')
   return readLocal<string[]>(FAVORITES_KEY, [])
 }
 
 export async function getFavorites(): Promise<Product[]> {
-  if (__API_BASE_URL__) return apiRequest<Product[]>('/me/favorites')
+  if (getDataMode() === 'cloud') return (await cloudCall<CloudProduct[]>('getFavorites')).map(fromCloud)
+  if (getDataMode() === 'api') return apiRequest<Product[]>('/me/favorites')
   const ids = await getFavoriteIds()
   return localProducts().filter(product => ids.includes(product.id))
 }
 
 export async function toggleFavorite(id: string): Promise<boolean> {
-  if (__API_BASE_URL__) {
+  if (getDataMode() === 'cloud') {
+    await ensureUserSession()
+    const favorited = !(await getFavoriteIds()).includes(id)
+    const result = await cloudCall<{ favorited: boolean }>('setFavorite', { id, favorited })
+    return result.favorited
+  }
+  if (getDataMode() === 'api') {
     const result = await apiRequest<{ favorited: boolean }>(`/products/${encodeURIComponent(id)}/favorite`, 'POST')
     return result.favorited
   }

@@ -11,7 +11,8 @@ export default defineConfig({
   compiler: 'webpack5',
   plugins: [],
   defineConstants: {
-    __API_BASE_URL__: JSON.stringify(process.env.TARO_APP_API_BASE_URL || '')
+    __API_BASE_URL__: JSON.stringify(process.env.TARO_APP_API_BASE_URL || ''),
+    __CLOUDBASE_ENV_ID__: JSON.stringify(process.env.TARO_APP_CLOUDBASE_ENV_ID || '')
   },
   copy: { patterns: [], options: {} },
   mini: {

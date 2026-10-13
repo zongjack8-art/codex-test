@@ -1,4 +1,6 @@
-# CampusMarket API 设计
+# CampusMarket HTTP API 设计（可选适配层）
+
+微信小程序正式模式使用 CloudBase，部署说明见 [CloudBase 部署步骤](CLOUDBASE.md)。本页保留原有 HTTP Service 的接口约定，供未来切换后端使用；当前仓库不包含这些 HTTP 接口的服务端实现。
 
 Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTTPS 和 JSON；成功响应统一为 `{ "data": ... }`，失败响应为 `{ "message": "错误说明" }`，并使用合适的 HTTP 状态码。除商品读取外，接口要求 `Authorization: Bearer <token>`。分页、内容审核和聊天接口可在后续版本加入。
 
@@ -25,8 +27,10 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 | `GET /products/:id` | 商品详情 | 返回 `Product`，不存在返回 404 |
 | `POST /products` | 发布商品 | 请求 `ProductInput`；返回新建 `Product` |
 | `GET /me/products` | 我的发布 | 返回当前用户 `Product[]`，包括已售出 |
-| `PATCH /products/:id` | 更新状态 | 请求 `{ "status": "available" 或 "sold" }`；只允许卖家操作 |
+| `PATCH /products/:id` | 编辑商品或更新状态 | 状态为 `selling`、`sold` 或 `offline`；只允许卖家操作 |
 | `DELETE /products/:id` | 删除商品 | 只允许卖家操作；成功返回 `{ "data": null }` |
+
+用户资料接口：`GET /me` 返回当前用户；`PATCH /me` 接收昵称、头像、学校、校区并返回更新后的用户。HTTP 服务端必须自行验证 Bearer 令牌及资源所有权。
 
 `Product` 字段见 `src/types/market.ts`。金额单位为人民币元，后端建议使用整数分存储并在边界转换；客户端当前以元显示。`images` 是 HTTPS URL 数组，最多 3 张。服务端必须重新验证标题、描述、价格、图片、分类和校区。
 
