@@ -1,8 +1,8 @@
 # 天津师范大学 CloudBase 数据结构
 
-目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports` 四个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
+目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports`、`conversations`、`messages` 六个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
 
-四个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
+六个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
 
 ## users
 
@@ -57,6 +57,35 @@
 
 不要允许客户端读取或直接写入 `reports`。
 
+## conversations
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `_id` | string | `conv_` 加 `SHA-256(buyerId:productId)`；默认 `_id` 唯一索引防止重复会话 |
+| `productId` | string | 对应商品 ID；商品删除后仍保留 |
+| `buyerId`, `sellerId` | string | 云函数从当前 OPENID 和商品卖家确定；不接受客户端指定 |
+| `participantIds` | string[] | 买卖双方 ID，仅用于记录；授权时仍核对 `buyerId` / `sellerId` |
+| `productSnapshot` | object | 创建时保存标题、价格、首图和状态，商品删除后仍能显示上下文 |
+| `lastMessage`, `lastMessageAt` | string / number | 列表摘要，最近消息最多保留前 80 字 |
+| `buyerUnreadCount`, `sellerUnreadCount` | number | 双方独立的未读计数；发送时原子加一，进入会话仅清空自己一侧 |
+| `status` | string | 第一版为 `active`，预留会话管理 |
+| `createdAt`, `updatedAt` | number | Unix 毫秒时间戳 |
+
+一个买家对同一商品只建立一个会话；卖家不能与自己建立会话。列表每个角色最多读取最近 50 条会话。商品售出、下架或删除时，不删除原有会话和消息；读取时优先展示实时商品状态，商品删除则展示快照和“商品已删除”。
+
+## messages
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `_id` | string | 云数据库自动生成 |
+| `conversationId` | string | 所属会话 |
+| `senderId`, `receiverId` | string | 云函数按 OPENID 与会话参与者确定；客户端字段无效 |
+| `type` | string | 第一版固定 `text` |
+| `content` | string | 去首尾空白，1–500 字 |
+| `createdAt` | number | Unix 毫秒时间戳 |
+
+仅会话买卖双方可通过 `market` 云函数读取或发送消息。每人每会话每分钟最多发送 20 条；聊天页每次读取最近 100 条，15 秒低频刷新。第一版没有聊天图片、文件、已读回执或支付。
+
 ## 索引
 
 在云开发控制台“数据库 → 集合 → 索引管理”建立以下组合索引。`_id` 的默认索引无需重复建。控制台中的升/降序选择与下表一致；查询量较小时先创建至少前五项，后续依据实际查询错误和性能补齐。
@@ -71,6 +100,12 @@
 | `favorites` | `productId` 升序 | 删除商品时清理收藏 |
 | `reports` | `type` 升序、`reporterId` 升序、`productId` 升序、`status` 升序 | 防重复举报 |
 | `reports` | `type` 升序、`reporterId` 升序、`createdAt` 降序 | 每日举报次数 |
+| `conversations` | `buyerId` 升序、`lastMessageAt` 降序 | 当前买家的最近会话 |
+| `conversations` | `sellerId` 升序、`lastMessageAt` 降序 | 当前卖家的最近会话 |
+| `messages` | `conversationId` 升序、`createdAt` 降序 | 会话内最近消息 |
+| `messages` | `conversationId` 升序、`senderId` 升序、`createdAt` 降序 | 每人每分钟发送次数限制 |
+
+`conversations._id` 已编码买家和商品，唯一性由数据库默认 `_id` 索引保证，无需另建“买家 + 商品”唯一索引。实际控制台如对某个组合查询提示缺索引，按提示补建，并记录在本表。聊天未读总数分批读取双方会话计数，最多扫描每侧 1000 条；运营规模超过此上限前需改为专用聚合统计。
 
 关键词搜索目前对标题和描述做转义后的正则匹配；数据量增加后需引入专用全文索引或搜索服务。商品列表上限 50 件、我的发布 100 件、收藏展示 50 件；大规模运营前需分页。
 

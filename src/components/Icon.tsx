@@ -24,8 +24,9 @@ import spark from '../assets/icons/spark.svg'
 import more from '../assets/icons/more.svg'
 import chevron from '../assets/icons/chevron.svg'
 import sliders from '../assets/icons/sliders.svg'
+import message from '../assets/icons/message.svg'
 
-const sources = { home, grid, plus, heart, user, search, pin, shield, book, laptop, bed, bike, shirt, racket, camera, arrow, edit, trash, package: box, check, clock, spark, more, chevron, sliders }
+const sources = { home, grid, plus, heart, user, search, pin, shield, book, laptop, bed, bike, shirt, racket, camera, arrow, edit, trash, package: box, check, clock, spark, more, chevron, sliders, message }
 export type IconName = keyof typeof sources
 
 export default function Icon({ name, size = 'md', className = '' }: { name: IconName; size?: 'sm' | 'md' | 'lg'; className?: string }) {

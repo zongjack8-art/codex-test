@@ -2,7 +2,7 @@
 
 微信小程序正式模式使用 CloudBase，部署说明见 [CloudBase 部署步骤](CLOUDBASE.md)。本页保留原有 HTTP Service 的接口约定，供未来切换后端使用；当前仓库不包含这些 HTTP 接口的服务端实现。
 
-Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTTPS 和 JSON；成功响应统一为 `{ "data": ... }`，失败响应为 `{ "message": "错误说明" }`，并使用合适的 HTTP 状态码。除商品读取外，接口要求 `Authorization: Bearer <token>`。分页、内容审核和聊天接口可在后续版本加入。
+Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTTPS 和 JSON；成功响应统一为 `{ "data": ... }`，失败响应为 `{ "message": "错误说明" }`，并使用合适的 HTTP 状态码。除商品读取外，接口要求 `Authorization: Bearer <token>`。此 HTTP 后端仍未实现；CloudBase 聊天使用下文对应的 `market` action。
 
 ## 认证
 
@@ -43,6 +43,22 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 | `POST /products/:id/favorite` | 切换收藏状态 | `{ "favorited": boolean }` |
 
 正式后端建议改为幂等的 `PUT`/`DELETE` 收藏接口，避免重复请求导致状态反转；当前 Service 接口与 Mock 实现一致。
+
+## 站内消息
+
+`src/services/chat.ts` 在 Cloud 模式调用 `market` 的 `startConversation`、`listConversations`、`getConversation`、`listMessages`、`sendMessage`、`markConversationRead`、`getUnreadMessageCount`。若将来实现 HTTP 适配层，需提供以下路径，且服务端必须核验令牌中的真实用户及会话参与资格：
+
+| 方法与路径 | 对应功能 |
+| --- | --- |
+| `POST /me/conversations` | 用 `productId` 创建或复用买家会话 |
+| `GET /me/conversations` | 当前用户的会话列表 |
+| `GET /me/conversations/unread-count` | 当前用户未读总数 |
+| `GET /me/conversations/:id` | 会话和商品摘要 |
+| `GET /me/conversations/:id/messages` | 会话消息 |
+| `POST /me/conversations/:id/messages` | 发送 1–500 字文字，提交 `{ content }` |
+| `POST /me/conversations/:id/read` | 只清空当前用户一侧未读数 |
+
+HTTP 请求中的买家、卖家、发送者、收件人和未读数字段不能决定真实归属。商品删除后仍保留已有会话和商品快照；不提供站内支付。
 
 ## 图片上传
 

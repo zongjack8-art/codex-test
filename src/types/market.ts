@@ -60,3 +60,33 @@ export interface Session {
   token?: string
   user: UserProfile
 }
+
+export interface ChatProductSnapshot {
+  title: string
+  price: number
+  image: string
+  status: ProductStatus | 'deleted'
+}
+
+export interface ChatConversation {
+  id: string
+  productId: string
+  buyerId: string
+  sellerId: string
+  other: Pick<Seller, 'id' | 'nickname' | 'avatar'>
+  product: ChatProductSnapshot
+  lastMessage: string
+  lastMessageAt: number
+  unreadCount: number
+  createdAt: number
+}
+
+export interface ChatMessage {
+  id: string
+  conversationId: string
+  senderId: string
+  receiverId: string
+  type: 'text'
+  content: string
+  createdAt: number
+}

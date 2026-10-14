@@ -39,16 +39,16 @@ export default function ProfilePage() {
   }
   const menu: { icon: IconName; label: string; action: () => void }[] = [
     { icon: 'package', label: '我的发布', action: () => Taro.navigateTo({ url: '/pages/my-listings/index' }) },
-    { icon: 'heart', label: '我的收藏', action: () => Taro.reLaunch({ url: '/pages/favorites/index' }) },
+    { icon: 'heart', label: '我的收藏', action: () => Taro.navigateTo({ url: '/pages/favorites/index' }) },
     { icon: 'edit', label: '编辑个人资料', action: () => Taro.navigateTo({ url: '/pages/profile/edit' }) },
     { icon: 'shield', label: '交易安全提醒', action: () => Taro.showModal({ title: '安心面交', content: '优先约在图书馆、食堂等校内公共区域；现场核对商品；不要提前转账。', showCancel: false }) },
-    { icon: 'spark', label: '关于校园集市', action: () => Taro.showModal({ title: `关于 ${campusConfig.brandName}`, content: getDataMode() === 'mock' ? `${campusConfig.schoolSlogan}。当前为本机演示版本，数据不会跨设备同步。` : `${campusConfig.schoolSlogan}。当前仅提供信息展示与线下面交，站内联系和支付尚未开通。`, showCancel: false }) }
+    { icon: 'spark', label: '关于校园集市', action: () => Taro.showModal({ title: `关于 ${campusConfig.brandName}`, content: getDataMode() === 'mock' ? `${campusConfig.schoolSlogan}。当前为本机演示版本，数据不会跨设备同步。` : `${campusConfig.schoolSlogan}。通过站内消息约好面交时间地点，验货后双方自行付款；平台不提供支付或担保。`, showCancel: false }) }
   ]
 
   return <View className='page page--with-nav profile-page'>
     <View className='profile-hero'><Text className='page-heading__eyebrow'>MY CAMPUSMARKET</Text><View className='profile-user'><Avatar className='profile-user__avatar' value={profile.avatar} /><View className='profile-user__info'><Text className='profile-user__name'>{profileLoading ? '正在连接…' : profileError ? '暂未连接' : profile.nickname || '你好，同学'}</Text><Text className='profile-user__sub'>{campusConfig.schoolName} · {profile.campus}</Text><Badge tone='primary'>{getDataMode() === 'mock' ? '本机演示身份' : profileError ? '身份未连接' : profileLoading ? '连接中' : '微信用户'}</Badge></View></View>{profile.bio && !profileError && <Text className='profile-user__bio'>{profile.bio}</Text>}</View>
     <View className='content-pad profile-content'>
-      <View className='profile-stats'><View onClick={() => Taro.navigateTo({ url: '/pages/my-listings/index' })}><Text>{listingCount}</Text><Text>我的发布</Text></View><View onClick={() => Taro.reLaunch({ url: '/pages/favorites/index' })}><Text>{favoriteCount}</Text><Text>我的收藏</Text></View><View onClick={() => Taro.navigateTo({ url: '/pages/my-listings/index?status=sold' })}><Text>{soldCount}</Text><Text>已售出</Text></View></View>
+      <View className='profile-stats'><View onClick={() => Taro.navigateTo({ url: '/pages/my-listings/index' })}><Text>{listingCount}</Text><Text>我的发布</Text></View><View onClick={() => Taro.navigateTo({ url: '/pages/favorites/index' })}><Text>{favoriteCount}</Text><Text>我的收藏</Text></View><View onClick={() => Taro.navigateTo({ url: '/pages/my-listings/index?status=sold' })}><Text>{soldCount}</Text><Text>已售出</Text></View></View>
       {isH5CloudFallback() && <Text className='mode-banner'>H5 当前使用本机演示数据。</Text>}
       {profileError && <View className='profile-connect-error'><Text>云端身份暂时不可用，请检查环境和 market 云函数后重试。</Text><AppButton variant='secondary' onClick={loadProfile}>重新连接</AppButton></View>}
       <View className='profile-section-heading'><Text>我的校园生活</Text><Text>管理好物，安心交易</Text></View>

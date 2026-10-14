@@ -2,6 +2,7 @@ const cloud = require('wx-server-sdk')
 const sharp = require('sharp')
 const { randomUUID } = require('node:crypto')
 const campus = require('./campus.json')
+const { createChatHandler } = require('./chat')
 const {
   AppError, CATEGORIES, STATUSES, MAX_IMAGE_BYTES, fail, cleanText, safeId,
   ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, escapeRegExp
@@ -14,6 +15,9 @@ const users = db.collection('users')
 const products = db.collection('products')
 const favorites = db.collection('favorites')
 const reports = db.collection('reports')
+const conversations = db.collection('conversations')
+const messages = db.collection('messages')
+const chatActions = new Set(['startConversation', 'listConversations', 'getConversation', 'listMessages', 'sendMessage', 'markConversationRead', 'getUnreadMessageCount'])
 
 function identity() {
   const openid = cloud.getWXContext().OPENID
@@ -49,6 +53,7 @@ async function ensureUser(openid) {
   }
   return user || await one(users, openid)
 }
+const chat = createChatHandler({ db, users, products, conversations, messages, ensureUser })
 async function hydrate(items) {
   if (!items.length) return []
   const ids = [...new Set(items.map(item => item.sellerId))]
@@ -116,6 +121,7 @@ async function run(action, event) {
   }
 
   const openid = identity()
+  if (chatActions.has(action)) return chat(action, event, openid)
   if (action === 'login') return publicUser(await ensureUser(openid))
   if (action === 'updateProfile') {
     await ensureUser(openid)

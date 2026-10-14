@@ -7,6 +7,7 @@ import { Badge } from '../../components/Badge'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import ProductPhoto from '../../components/ProductPhoto'
+import { currentChatUserId, startConversation } from '../../services/chat'
 import { getFavoriteIds, getProduct, getProducts, toggleFavorite } from '../../services/products'
 import type { Product } from '../../types/market'
 import { formatProductTime } from '../../utils/format'
@@ -18,6 +19,7 @@ export default function DetailPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [favoriteBusy, setFavoriteBusy] = useState(false)
+  const [contactBusy, setContactBusy] = useState(false)
   const [sellerCount, setSellerCount] = useState<number | null>(null)
   const favoriteBusyRef = useRef(false)
   const load = () => {
@@ -44,7 +46,16 @@ export default function DetailPage() {
     finally { favoriteBusyRef.current = false; setFavoriteBusy(false) }
   }
 
-  const contact = () => Taro.showModal({ title: '联系卖家', content: '站内联系功能尚未开通。请在校内公共区域协商面交，当面验货后再付款。', showCancel: false })
+  const contact = async () => {
+    if (!product || contactBusy) return
+    setContactBusy(true)
+    try {
+      if (product.seller.id === await currentChatUserId()) return Taro.showToast({ title: '这是你发布的商品', icon: 'none' })
+      const conversation = await startConversation(product.id)
+      await Taro.navigateTo({ url: `/pages/chat/index?id=${encodeURIComponent(conversation.id)}` })
+    } catch (error) { Taro.showToast({ title: (error as Error).message || '暂时无法联系卖家，请重试', icon: 'none' }) }
+    finally { setContactBusy(false) }
+  }
 
   if (loading) return <View className='page detail-loading'><View className='detail-skeleton'><View /><View /><View /></View></View>
   if (loadError) return <View className='page'><EmptyState kind='error' title='商品暂时无法加载' description={loadError} action='重试' onAction={load} /></View>
@@ -66,6 +77,6 @@ export default function DetailPage() {
       <View className='detail-section detail-seller'><Text className='detail-section__title'>发布同学</Text><View className='detail-seller__row'><Avatar className='detail-seller__avatar' value={product.seller.avatar} /><View className='detail-seller__info'><Text className='detail-seller__name'>{product.seller.nickname}</Text><Text>{product.seller.campus} · 微信用户</Text></View>{sellerCount !== null && <Badge tone='accent'>在售 {sellerCount} 件</Badge>}</View></View>
       <View className='detail-safe-note'><Icon name='shield' size='sm' /><Text>选择校内公共地点面交，请勿提前转账。</Text></View>
     </View>
-    <View className='detail-actions'><View className={`detail-actions__favorite ${favorite ? 'is-active' : ''} ${favoriteBusy ? 'is-busy' : ''}`} onClick={onFavorite}><Icon name='heart' size='md' /><Text>{favorite ? '已收藏' : '收藏'}</Text></View><AppButton className='detail-actions__contact' onClick={contact} disabled={product.status !== 'selling'}>{product.status === 'selling' ? '联系卖家' : '当前不可交易'}</AppButton></View>
+    <View className='detail-actions'><View className={`detail-actions__favorite ${favorite ? 'is-active' : ''} ${favoriteBusy ? 'is-busy' : ''}`} onClick={onFavorite}><Icon name='heart' size='md' /><Text>{favorite ? '已收藏' : '收藏'}</Text></View><AppButton className='detail-actions__contact' onClick={contact} disabled={product.status !== 'selling'} loading={contactBusy}>{product.status === 'selling' ? '联系卖家' : '当前不可交易'}</AppButton></View>
   </View>
 }
