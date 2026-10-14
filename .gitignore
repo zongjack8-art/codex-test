@@ -7,3 +7,4 @@ dist/
 *.log
 .env.local
 .env.*.local
+project.private.config.json
