@@ -39,7 +39,7 @@ function cloudPath(fileID) {
 function ownImage(fileID, openid, purpose) {
   const folder = purpose === 'avatar' ? 'avatars' : 'images'
   const path = cloudPath(fileID)
-  return path.startsWith(`${folder}/${openid}/`) && /^[a-zA-Z0-9_-]{8,80}\.jpg$/.test(path.slice(`${folder}/${openid}/`.length))
+  return path.startsWith(`${folder}/${openid}/`) && /^[a-zA-Z0-9_-]{8,80}\.(?:jpg|jpeg|png|webp)$/.test(path.slice(`${folder}/${openid}/`.length))
 }
 function incomingImage(fileID, openid) {
   const path = cloudPath(fileID)

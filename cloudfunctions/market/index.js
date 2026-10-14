@@ -1,5 +1,5 @@
 const cloud = require('wx-server-sdk')
-const sharp = require('sharp')
+
 const { randomUUID } = require('node:crypto')
 const campus = require('./campus.json')
 const { createChatHandler } = require('./chat')
@@ -134,22 +134,73 @@ async function run(action, event) {
   }
   if (action === 'finalizeImage') {
     const purpose = event.purpose === 'avatar' ? 'avatar' : 'product'
-    if (!incomingImage(event.fileID, openid)) fail('INVALID_IMAGE', '上传路径不属于当前用户')
+  
+    if (!incomingImage(event.fileID, openid)) {
+      fail('INVALID_IMAGE', '上传路径不属于当前用户')
+    }
+  
     try {
       const result = await cloud.downloadFile({ fileID: event.fileID })
       const data = result.fileContent
-      if (!data || data.length > MAX_IMAGE_BYTES) fail('INVALID_IMAGE', '图片不得超过 5 MB')
-      const meta = await sharp(data, { limitInputPixels: 24000000 }).metadata()
-      if (!['jpeg', 'png', 'webp'].includes(meta.format) || (meta.pages || 1) !== 1 || !meta.width || !meta.height || meta.width * meta.height > 24000000) {
-        fail('INVALID_IMAGE', '只支持单帧 JPEG、PNG 或 WebP 图片')
+  
+      if (!data || data.length > MAX_IMAGE_BYTES) {
+        fail('INVALID_IMAGE', '图片不得超过 5 MB')
       }
-      const normalized = await sharp(data).rotate().resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer()
+  
+      let extension = ''
+  
+      // JPEG
+      if (
+        data.length >= 3 &&
+        data[0] === 0xff &&
+        data[1] === 0xd8 &&
+        data[2] === 0xff
+      ) {
+        extension = 'jpg'
+      }
+  
+      // PNG
+      else if (
+        data.length >= 8 &&
+        data[0] === 0x89 &&
+        data[1] === 0x50 &&
+        data[2] === 0x4e &&
+        data[3] === 0x47 &&
+        data[4] === 0x0d &&
+        data[5] === 0x0a &&
+        data[6] === 0x1a &&
+        data[7] === 0x0a
+      ) {
+        extension = 'png'
+      }
+  
+      // WebP
+      else if (
+        data.length >= 12 &&
+        data.toString('ascii', 0, 4) === 'RIFF' &&
+        data.toString('ascii', 8, 12) === 'WEBP'
+      ) {
+        extension = 'webp'
+      }
+  
+      if (!extension) {
+        fail('INVALID_IMAGE', '只支持 JPEG、PNG 或 WebP 图片')
+      }
+  
       const folder = purpose === 'avatar' ? 'avatars' : 'images'
-      const saved = await cloud.uploadFile({ cloudPath: `${folder}/${openid}/${randomUUID().replace(/-/g, '')}.jpg`, fileContent: normalized })
+  
+      const saved = await cloud.uploadFile({
+        cloudPath: `${folder}/${openid}/${randomUUID().replace(/-/g, '')}.${extension}`,
+        fileContent: data
+      })
+  
       return { fileID: saved.fileID }
     } finally {
-      try { await cloud.deleteFile({ fileList: [event.fileID] }) }
-      catch (error) { console.error('Could not delete incoming image', error) }
+      try {
+        await cloud.deleteFile({ fileList: [event.fileID] })
+      } catch (error) {
+        console.error('Could not delete incoming image', error)
+      }
     }
   }
   if (action === 'discardImages') {
