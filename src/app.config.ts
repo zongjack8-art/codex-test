@@ -9,6 +9,8 @@ export default defineAppConfig({
     'pages/detail/index',
     'pages/chat/index',
     'pages/my-listings/index',
+    'pages/orders/index',
+    'pages/order-detail/index',
     'pages/profile/edit'
   ],
   window: {

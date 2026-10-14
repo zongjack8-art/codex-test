@@ -11,6 +11,7 @@ import { campusConfig } from '../../config/campus'
 import { startConversation } from '../../services/chat'
 import { getFavoriteIds, getProduct, toggleFavorite } from '../../services/products'
 import { submitReport, type ReportReason } from '../../services/reports'
+import { createOrder } from '../../services/orders'
 import type { Product } from '../../types/market'
 import { formatDetailTime } from '../../utils/format'
 import { detailPermissions } from './permissions'
@@ -30,6 +31,7 @@ export default function DetailPage() {
   const [loadError, setLoadError] = useState('')
   const [favoriteBusy, setFavoriteBusy] = useState(false)
   const [contactBusy, setContactBusy] = useState(false)
+  const [orderBusy, setOrderBusy] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportReason, setReportReason] = useState<ReportReason | null>(null)
   const [reportDescription, setReportDescription] = useState('')
@@ -38,6 +40,7 @@ export default function DetailPage() {
   const favoriteBusyRef = useRef(false)
   const contactBusyRef = useRef(false)
   const reportBusyRef = useRef(false)
+  const orderBusyRef = useRef(false)
   const load = () => {
     setLoading(true)
     setLoadError('')
@@ -85,6 +88,18 @@ export default function DetailPage() {
     finally { reportBusyRef.current = false; setReportBusy(false) }
   }
 
+  const want = async () => {
+    if (!product || !detailPermissions(product).canContact || orderBusyRef.current) return
+    orderBusyRef.current = true
+    setOrderBusy(true)
+    try {
+      const order = await createOrder(product.id)
+      Taro.showToast({ title: '已向卖家发起订单', icon: 'none' })
+      await Taro.navigateTo({ url: `/pages/order-detail/index?id=${encodeURIComponent(order.id)}` })
+    } catch (error) { Taro.showToast({ title: (error as Error).message || '发起订单失败，请重试', icon: 'none' }) }
+    finally { orderBusyRef.current = false; setOrderBusy(false) }
+  }
+
   if (loading) return <View className='page detail-loading'><View className='detail-skeleton'><View /><View /><View /></View></View>
   if (loadError) return <View className='page'><EmptyState kind='error' title='商品暂时无法加载' description={loadError} action='重试' onAction={load} /></View>
   if (!product) return <View className='page'><EmptyState kind='error' title='商品暂时找不到了' description='它可能已被删除，继续逛逛别的好物吧' action='返回首页' onAction={() => Taro.reLaunch({ url: '/pages/index/index' })} /></View>
@@ -116,7 +131,7 @@ export default function DetailPage() {
       <View className='detail-safe-note'><Icon name='shield' size='sm' /><Text>选择校内公共地点面交，请勿提前转账。</Text></View>
     </View>
     <View className='detail-actions'>
-      {!permissions.ownershipKnown ? <AppButton block variant='secondary' onClick={load}>重新加载商品信息</AppButton> : permissions.canManage ? <AppButton block onClick={() => Taro.navigateTo({ url: product.status === 'sold' ? '/pages/my-listings/index' : `/pages/publish/index?id=${encodeURIComponent(product.id)}` })}>{product.status === 'sold' ? '查看我的发布' : '编辑商品'}</AppButton> : permissions.canContact ? <><View className={`detail-actions__favorite ${favorite ? 'is-active' : ''} ${favoriteBusy ? 'is-busy' : ''}`} onClick={onFavorite}><Icon name='heart' size='md' /><Text>{favorite ? '已收藏' : '收藏'}</Text></View><AppButton className='detail-actions__contact' onClick={contact} loading={contactBusy}>联系卖家</AppButton></> : <Text className='detail-actions__status'>{product.status === 'sold' ? '商品已售出，暂不可联系卖家' : '商品已下架，暂不可联系卖家'}</Text>}
+      {!permissions.ownershipKnown ? <AppButton block variant='secondary' onClick={load}>重新加载商品信息</AppButton> : permissions.canManage ? <AppButton block onClick={() => Taro.navigateTo({ url: product.status === 'sold' ? '/pages/my-listings/index' : `/pages/publish/index?id=${encodeURIComponent(product.id)}` })}>{product.status === 'sold' ? '查看我的发布' : '编辑商品'}</AppButton> : permissions.canContact ? <><View className={`detail-actions__favorite ${favorite ? 'is-active' : ''} ${favoriteBusy ? 'is-busy' : ''}`} onClick={onFavorite}><Icon name='heart' size='md' /><Text>{favorite ? '已收藏' : '收藏'}</Text></View><AppButton className='detail-actions__want' variant='secondary' onClick={want} loading={orderBusy}>我想要</AppButton><AppButton className='detail-actions__contact' onClick={contact} loading={contactBusy}>联系卖家</AppButton></> : <Text className='detail-actions__status'>{product.status === 'sold' ? '商品已售出，暂不可联系卖家或发起订单' : '商品已下架，暂不可联系卖家或发起订单'}</Text>}
     </View>
   </View>
 }

@@ -92,3 +92,23 @@ export interface ChatMessage {
   content: string
   createdAt: number
 }
+
+export type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
+export type OrderRole = 'buyer' | 'seller'
+
+export interface MarketOrder {
+  id: string
+  productId: string
+  buyerId: string
+  sellerId: string
+  productTitle: string
+  productImage: string
+  amount: number
+  status: OrderStatus
+  role: OrderRole
+  other: Pick<Seller, 'nickname' | 'avatar'>
+  createdAt: number
+  updatedAt: number
+  completedAt: number | null
+  cancelledAt: number | null
+}

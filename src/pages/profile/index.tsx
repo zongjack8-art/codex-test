@@ -39,6 +39,7 @@ export default function ProfilePage() {
   }
   const menu: { icon: IconName; label: string; action: () => void }[] = [
     { icon: 'package', label: '我的发布', action: () => Taro.navigateTo({ url: '/pages/my-listings/index' }) },
+    { icon: 'check', label: '我的订单', action: () => Taro.navigateTo({ url: '/pages/orders/index' }) },
     { icon: 'heart', label: '我的收藏', action: () => Taro.navigateTo({ url: '/pages/favorites/index' }) },
     { icon: 'edit', label: '编辑个人资料', action: () => Taro.navigateTo({ url: '/pages/profile/edit' }) },
     { icon: 'shield', label: '交易安全提醒', action: () => Taro.showModal({ title: '安心面交', content: '优先约在图书馆、食堂等校内公共区域；现场核对商品；不要提前转账。', showCancel: false }) },
