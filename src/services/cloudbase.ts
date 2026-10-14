@@ -23,7 +23,10 @@ export function getCloud(): CloudApi {
 }
 
 export async function cloudCall<T>(action: string, params: object = {}): Promise<T> {
-  const response = await getCloud().callFunction({ name: 'market', data: { action, ...params } })
+  const cloud = getCloud()
+  let response: { result: CloudResult<unknown> }
+  try { response = await cloud.callFunction({ name: 'market', data: { action, ...params } }) }
+  catch { throw new Error('云服务暂时不可用，请检查环境和 market 云函数') }
   const result = response.result as CloudResult<T>
   if (!result?.ok) throw new Error(result?.error?.message || '云服务暂时不可用')
   return result.data as T

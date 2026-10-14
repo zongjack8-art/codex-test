@@ -1,9 +1,10 @@
 const cloud = require('wx-server-sdk')
 const sharp = require('sharp')
 const { randomUUID } = require('node:crypto')
+const campus = require('./campus.json')
 const {
   AppError, CATEGORIES, STATUSES, MAX_IMAGE_BYTES, fail, cleanText, safeId,
-  ownImage, incomingImage, validateProduct, validateProfile, favoriteId, assertOwner, escapeRegExp
+  ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, escapeRegExp
 } = require('./security')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
@@ -24,14 +25,23 @@ async function one(collection, id) {
   return result.data[0] || null
 }
 function publicUser(user) {
-  return { id: user._id, nickname: user.nickname, avatar: user.avatar, school: user.school, campus: user.campus }
+  return { id: user._id, nickname: user.nickname, avatar: user.avatar, school: campus.schoolName, campus: user.campus, bio: user.bio || '' }
 }
 async function ensureUser(openid) {
   let user = await one(users, openid)
-  if (user) return user
+  if (user) {
+    const legacyCampus = /(?:北区|[东西南北])校区/u.test(user.campus || '')
+    const legacyAvatar = user.avatar === '🎓'
+    if (user.school !== campus.schoolName || legacyCampus || legacyAvatar) {
+      const changes = { school: campus.schoolName, ...(legacyCampus ? { campus: campus.campusName } : {}), ...(legacyAvatar ? { avatar: '同' } : {}), updatedAt: Date.now() }
+      await users.doc(openid).update({ data: changes })
+      user = { ...user, ...changes }
+    }
+    return user
+  }
   const now = Date.now()
   try {
-    await users.add({ data: { _id: openid, nickname: '校园同学', avatar: '🎓', school: '待完善', campus: '待完善', createdAt: now, updatedAt: now } })
+    await users.add({ data: { _id: openid, nickname: '校园同学', avatar: '同', school: campus.schoolName, campus: campus.campusName, bio: '', createdAt: now, updatedAt: now } })
   } catch (error) {
     // A concurrent first login may have inserted the same deterministic _id.
     user = await one(users, openid)
@@ -44,7 +54,7 @@ async function hydrate(items) {
   const ids = [...new Set(items.map(item => item.sellerId))]
   const result = await users.where({ _id: _.in(ids) }).limit(ids.length).get()
   const sellers = new Map(result.data.map(user => [user._id, publicUser(user)]))
-  return items.map(item => ({ ...item, seller: sellers.get(item.sellerId) || { id: item.sellerId, nickname: '校园同学', avatar: '🎓', campus: item.location } }))
+  return items.map(item => ({ ...item, seller: sellers.get(item.sellerId) || { id: item.sellerId, nickname: '校园同学', avatar: '同', school: campus.schoolName, campus: campus.campusName } }))
 }
 async function ownedProduct(id, openid) {
   const product = await one(products, safeId(id))
@@ -61,7 +71,7 @@ async function verifyStoredImages(fileIDs) {
 }
 async function recordCleanupFailure(fileIDs, productId, error) {
   try {
-    await reports.add({ data: { type: 'image_cleanup', status: 'pending', productId, fileIDs, reason: String(error.message || error).slice(0, 200), createdAt: Date.now() } })
+    await reports.add({ data: { type: 'image_cleanup', status: 'pending', school: campus.schoolName, productId, fileIDs, reason: String(error.message || error).slice(0, 200), createdAt: Date.now(), updatedAt: Date.now() } })
   } catch (recordError) { console.error('Could not record cleanup failure', recordError) }
 }
 async function cleanFiles(fileIDs, productId) {
@@ -92,7 +102,7 @@ async function run(action, event) {
     const category = filters.category && filters.category !== 'all' ? filters.category : undefined
     if (category && !CATEGORIES.has(category)) fail('INVALID_INPUT', '商品分类无效')
     const keyword = filters.keyword ? cleanText(filters.keyword, '关键词', 1, 40) : ''
-    const base = { status: 'selling', ...(category ? { category } : {}) }
+    const base = { status: 'selling', school: campus.schoolName, ...(category ? { category } : {}) }
     const regex = keyword ? db.RegExp({ regexp: escapeRegExp(keyword), options: 'i' }) : null
     const condition = regex ? _.or([{ ...base, title: regex }, { ...base, description: regex }]) : base
     const sort = filters.sort === 'priceAsc' ? ['price', 'asc'] : filters.sort === 'priceDesc' ? ['price', 'desc'] : ['createdAt', 'desc']
@@ -101,7 +111,7 @@ async function run(action, event) {
   }
   if (action === 'getProduct') {
     const item = await one(products, safeId(event.id))
-    if (!item || (item.status === 'offline' && item.sellerId !== cloud.getWXContext().OPENID)) return null
+    if (!item || item.school !== campus.schoolName || (item.status === 'offline' && item.sellerId !== cloud.getWXContext().OPENID)) return null
     return (await hydrate([item]))[0]
   }
 
@@ -110,7 +120,7 @@ async function run(action, event) {
   if (action === 'updateProfile') {
     await ensureUser(openid)
     const profile = validateProfile(event.profile, openid)
-    if (profile.avatar !== '🎓') await verifyStoredImages([profile.avatar])
+    if (profile.avatar !== '同') await verifyStoredImages([profile.avatar])
     const old = await one(users, openid)
     await users.doc(openid).update({ data: { ...profile, updatedAt: Date.now() } })
     if (old.avatar !== profile.avatar && ownImage(old.avatar, openid, 'avatar')) await cleanFiles([old.avatar], `avatar:${openid}`)
@@ -136,6 +146,19 @@ async function run(action, event) {
       catch (error) { console.error('Could not delete incoming image', error) }
     }
   }
+  if (action === 'discardImages') {
+    const fileIDs = event.fileIDs
+    const purpose = event.purpose === 'avatar' ? 'avatar' : 'product'
+    if (!Array.isArray(fileIDs) || fileIDs.length < 1 || fileIDs.length > 3 || !fileIDs.every(fileID => ownImage(fileID, openid, purpose))) {
+      fail('INVALID_IMAGE', '待清理图片无效')
+    }
+    if (purpose === 'product') await cleanProductFiles(fileIDs, openid, 'discarded_upload')
+    else {
+      const user = await one(users, openid)
+      await cleanFiles(fileIDs.filter(fileID => fileID !== user?.avatar), `avatar:${openid}`)
+    }
+    return { discarded: true }
+  }
   if (action === 'createProduct') {
     await ensureUser(openid)
     const data = validateProduct(event.product, openid)
@@ -147,7 +170,7 @@ async function run(action, event) {
     return (await hydrate([await one(products, added._id)]))[0]
   }
   if (action === 'getMyProducts') {
-    const result = await products.where({ sellerId: openid }).orderBy('createdAt', 'desc').limit(100).get()
+    const result = await products.where({ sellerId: openid, school: campus.schoolName }).orderBy('createdAt', 'desc').limit(100).get()
     return hydrate(result.data)
   }
   if (action === 'updateProduct') {
@@ -176,7 +199,7 @@ async function run(action, event) {
     const ids = rows.map(item => item.productId)
     if (action === 'getFavoriteIds') return ids
     if (!ids.length) return []
-    const items = (await products.where({ _id: _.in(ids.slice(0, 50)), status: _.neq('offline') }).limit(50).get()).data
+    const items = (await products.where({ _id: _.in(ids.slice(0, 50)), school: campus.schoolName, status: _.neq('offline') }).limit(50).get()).data
     const ordered = ids.map(id => items.find(item => item._id === id)).filter(Boolean)
     return hydrate(ordered)
   }
@@ -186,7 +209,7 @@ async function run(action, event) {
     const key = favoriteId(openid, id)
     if (event.favorited) {
       const item = await one(products, id)
-      if (!item || item.status !== 'selling') fail('NOT_FOUND', '商品未在售')
+      if (!item || item.school !== campus.schoolName || item.status !== 'selling') fail('NOT_FOUND', '商品未在售')
       if (!await one(favorites, key)) {
         const count = await favorites.where({ userId: openid }).count()
         if (count.total >= 500) fail('RATE_LIMITED', '收藏数量已达上限')
@@ -197,6 +220,19 @@ async function run(action, event) {
       await favorites.doc(key).remove()
     }
     return { favorited: event.favorited }
+  }
+  if (action === 'createReport') {
+    const report = validateReport(event.report)
+    const item = await one(products, report.productId)
+    if (!item || item.school !== campus.schoolName) fail('NOT_FOUND', '商品不存在')
+    if (item.sellerId === openid) fail('INVALID_INPUT', '不能举报自己的商品')
+    const duplicate = await reports.where({ type: 'product', reporterId: openid, productId: report.productId, status: 'pending' }).limit(1).get()
+    if (duplicate.data.length) return { created: false }
+    const recent = await reports.where({ type: 'product', reporterId: openid, createdAt: _.gte(Date.now() - 86400000) }).count()
+    if (recent.total >= 10) fail('RATE_LIMITED', '今日举报次数已达上限')
+    const now = Date.now()
+    await reports.add({ data: { type: 'product', reporterId: openid, ...report, school: campus.schoolName, status: 'pending', createdAt: now, updatedAt: now } })
+    return { created: true }
   }
   fail('INVALID_ACTION', '不支持的操作')
 }

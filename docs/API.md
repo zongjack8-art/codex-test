@@ -12,7 +12,7 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 {
   "data": {
     "token": "server-issued-token",
-    "user": { "id": "user-1", "nickname": "校园同学", "campus": "北区校区", "avatar": "🎓" }
+    "user": { "id": "user-1", "nickname": "校园同学", "school": "天津师范大学", "campus": "校内", "avatar": "同" }
   }
 }
 ```
@@ -30,9 +30,9 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 | `PATCH /products/:id` | 编辑商品或更新状态 | 状态为 `selling`、`sold` 或 `offline`；只允许卖家操作 |
 | `DELETE /products/:id` | 删除商品 | 只允许卖家操作；成功返回 `{ "data": null }` |
 
-用户资料接口：`GET /me` 返回当前用户；`PATCH /me` 接收昵称、头像、学校、校区并返回更新后的用户。HTTP 服务端必须自行验证 Bearer 令牌及资源所有权。
+用户资料接口：`GET /me` 返回当前用户；`PATCH /me` 接收昵称、头像、常用校内范围和简介并返回更新后的用户。学校由服务端固定为天津师范大学，不能由客户端修改。HTTP 服务端必须自行验证 Bearer 令牌及资源所有权。
 
-`Product` 字段见 `src/types/market.ts`。金额单位为人民币元，后端建议使用整数分存储并在边界转换；客户端当前以元显示。`images` 是 HTTPS URL 数组，最多 3 张。服务端必须重新验证标题、描述、价格、图片、分类和校区。
+`Product` 字段见 `src/types/market.ts`。当前 CloudBase 实现用人民币元和最多两位小数，图片保存为 `cloud://` 文件 ID；本页所述可选 HTTP 后端可自行改用整数分和 HTTPS 图片地址，但须在 Service 边界转换。商品图片最多 3 张。服务端必须重新验证标题、描述、价格、图片、分类和面交范围。
 
 ## 收藏
 

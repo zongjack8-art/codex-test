@@ -1,4 +1,9 @@
 import { defineConfig } from '@tarojs/cli'
+import campus from '../cloudfunctions/market/campus.json'
+
+const dataSource = process.env.TARO_APP_DATA_SOURCE || 'mock'
+if (!['mock', 'cloud', 'api'].includes(dataSource)) throw new Error('TARO_APP_DATA_SOURCE 只能为 mock、cloud 或 api')
+if (dataSource === 'api' && !process.env.TARO_APP_API_BASE_URL) throw new Error('api 模式需要 TARO_APP_API_BASE_URL')
 
 export default defineConfig({
   projectName: 'campusmarket',
@@ -11,8 +16,9 @@ export default defineConfig({
   compiler: 'webpack5',
   plugins: [],
   defineConstants: {
+    __DATA_SOURCE__: JSON.stringify(dataSource),
     __API_BASE_URL__: JSON.stringify(process.env.TARO_APP_API_BASE_URL || ''),
-    __CLOUDBASE_ENV_ID__: JSON.stringify(process.env.TARO_APP_CLOUDBASE_ENV_ID || '')
+    __CLOUDBASE_ENV_ID__: JSON.stringify(process.env.TARO_APP_CLOUDBASE_ENV_ID || campus.cloudEnvId)
   },
   copy: { patterns: [], options: {} },
   mini: {

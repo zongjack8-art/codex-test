@@ -97,6 +97,7 @@
 .form-field__label-row { display: flex; justify-content: space-between; color: t.$text-tertiary; font-size: 19px; }
 .form-input, .form-textarea { width: 100%; border: 1px solid t.$border; border-radius: t.$radius-medium; background: t.$background; color: t.$text-primary; font-size: t.$font-body; }
 .form-input { height: 78px; padding: 0 19px; }
+.form-input--readonly { display: flex; align-items: center; color: t.$text-secondary; }
 .form-textarea { height: 170px; padding: 18px 19px; line-height: 1.5; }
 .form-hint { display: block; margin-top: 13px; color: t.$text-tertiary; font-size: 19px; line-height: 1.5; }
 

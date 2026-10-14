@@ -1,4 +1,4 @@
 {
   "read": "/^(images|avatars)\\//.test(resource.path) || (auth != null && resource.openid == auth.openid && /^incoming\\//.test(resource.path))",
-  "write": "auth != null && resource.openid == auth.openid && /^incoming\\//.test(resource.path) && resource.size <= 5242880"
+  "write": "auth != null && resource.openid == auth.openid && /^incoming\\/[^/]+\\/[A-Za-z0-9_-]{8,80}\\.jpg$/.test(resource.path) && resource.size <= 5242880"
 }

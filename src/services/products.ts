@@ -1,4 +1,5 @@
 import { demoUser, mockProducts } from '../data/mock'
+import { campusConfig, normalizeLegacyLocation } from '../config/campus'
 import type { Product, ProductFilters, ProductInput, ProductStatus, Seller } from '../types/market'
 import { apiRequest } from './api'
 import { ensureUserSession, getSession } from './auth'
@@ -39,7 +40,7 @@ function fromCloud(item: CloudProduct): Product {
     campus: item.location,
     status: item.status,
     createdAt: new Date(item.createdAt).toISOString(),
-    seller: item.seller || { id: item.sellerId, nickname: '校园同学', campus: item.location, avatar: '🎓' },
+    seller: item.seller || { id: item.sellerId, nickname: '校园同学', campus: campusConfig.campusName, school: campusConfig.schoolName, avatar: '同' },
     coverEmoji: '🎁',
     coverColor: '#e8efe9'
   }
@@ -51,7 +52,7 @@ function localProducts(): Product[] {
     // Refresh built-in demo listings without overwriting user-created local listings.
     const seed = mockProducts.find(item => item.id === product.id)
     const item = seed && product.seller.id !== demoUser.id ? { ...seed, status: product.status } : product
-    return item.seller.id === demoUser.id ? { ...item, seller: currentUser } : item
+    return { ...item, campus: normalizeLegacyLocation(item.campus), seller: item.seller.id === demoUser.id ? currentUser : { ...item.seller, school: campusConfig.schoolName, campus: normalizeLegacyLocation(item.seller.campus) === campusConfig.defaultTradeLocation ? campusConfig.campusName : item.seller.campus } }
   })
 }
 

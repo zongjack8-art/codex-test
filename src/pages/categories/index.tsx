@@ -7,6 +7,7 @@ import ProductCard from '../../components/ProductCard'
 import ProductGridSkeleton from '../../components/ProductGridSkeleton'
 import SearchBar from '../../components/SearchBar'
 import TabNav from '../../components/TabNav'
+import { campusConfig } from '../../config/campus'
 import { categories } from '../../data/mock'
 import { getProducts } from '../../services/products'
 import type { CategoryId, Product, ProductFilters } from '../../types/market'
@@ -26,6 +27,7 @@ export default function CategoriesPage() {
   const [sort, setSort] = useState<NonNullable<ProductFilters['sort']>>('newest')
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [refresh, setRefresh] = useState(-1)
 
   useDidShow(() => setRefresh(value => value + 1))
@@ -33,10 +35,11 @@ export default function CategoriesPage() {
     if (refresh < 0) return
     let cancelled = false
     setLoading(true)
+    setLoadError('')
     const timer = setTimeout(() => {
       getProducts({ category, keyword, sort })
         .then(items => { if (!cancelled) setProducts(items) })
-        .catch(error => { if (!cancelled) Taro.showToast({ title: error.message, icon: 'none' }) })
+        .catch(() => { if (!cancelled) setLoadError('请检查网络或云环境后重试') })
         .finally(() => { if (!cancelled) setLoading(false) })
     }, keyword ? 250 : 0)
     return () => { cancelled = true; clearTimeout(timer) }
@@ -45,13 +48,13 @@ export default function CategoriesPage() {
   const clearFilters = () => { setKeyword(''); setCategory('all'); setSort('newest') }
 
   return <View className='page page--with-nav'>
-    <View className='page-heading'><Text className='page-heading__eyebrow'>EXPLORE CAMPUS</Text><Text className='page-heading__title'>发现校园好物</Text><Text className='page-heading__desc'>从一本书到一辆车，遇见刚好需要的。</Text></View>
+    <View className='page-heading'><Text className='page-heading__eyebrow'>EXPLORE CAMPUS</Text><Text className='page-heading__title'>发现{campusConfig.schoolShortName}好物</Text><Text className='page-heading__desc'>从一本书到一辆车，遇见刚好需要的。</Text></View>
     <View className='content-pad explore-content'>
       <SearchBar value={keyword} onInput={setKeyword} />
       <View className='filter-heading'><Icon name='sliders' size='sm' /><Text>按分类逛</Text></View>
       <ScrollView scrollX className='filter-scroll'><View className='filter-chips'><Text className={`chip ${category === 'all' ? 'chip--active' : ''}`} onClick={() => setCategory('all')}>全部</Text>{categories.map(item => <Text key={item.id} className={`chip ${category === item.id ? 'chip--active' : ''}`} onClick={() => setCategory(item.id)}>{item.name}</Text>)}</View></ScrollView>
       <View className='results-bar'><Text>{loading ? '正在发现好物…' : `找到 ${products.length} 件好物`}</Text><View className='sort-actions'>{sorts.map(item => <Text key={item.value} className={sort === item.value ? 'is-selected' : ''} onClick={() => setSort(item.value)}>{item.label}</Text>)}</View></View>
-      {loading ? <ProductGridSkeleton /> : products.length ? <View className='product-grid'>{products.map(product => <ProductCard key={product.id} product={product} />)}</View> : <EmptyState kind='search' title='还没找到合适的好物' description='换个关键词或分类，再逛逛看' action='清除筛选' onAction={clearFilters} />}
+      {loading ? <ProductGridSkeleton /> : loadError ? <EmptyState kind='error' title='搜索暂时不可用' description={loadError} action='重试' onAction={() => setRefresh(value => value + 1)} /> : products.length ? <View className='product-grid'>{products.map(product => <ProductCard key={product.id} product={product} />)}</View> : <EmptyState kind='search' title='还没找到合适的好物' description='换个关键词或分类，再逛逛看' action='清除筛选' onAction={clearFilters} />}
     </View>
     <TabNav active='categories' />
   </View>

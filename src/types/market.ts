@@ -11,6 +11,7 @@ export interface Seller {
 
 export interface UserProfile extends Seller {
   school: string
+  bio?: string
 }
 
 export interface ProfileInput {
@@ -18,6 +19,7 @@ export interface ProfileInput {
   avatar: string
   school: string
   campus: string
+  bio?: string
 }
 
 export interface Product {

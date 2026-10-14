@@ -1,57 +1,83 @@
-# CloudBase 数据结构
+# 天津师范大学 CloudBase 数据结构
 
-使用微信云开发“文档型数据库”。在目标 envId 的控制台手动创建以下四个集合；本仓库不能代替控制台创建。所有集合的客户端安全规则均为 `read: false, write: false`，对应文件位于 `cloudbase/rules/`。页面只通过 `market` 云函数访问数据，云函数使用服务端 SDK 权限。时间字段为 Unix 毫秒时间戳，价格单位为人民币元，限定两位小数。
+目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports` 四个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
+
+四个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
 
 ## users
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `_id` | string | 微信上下文 OPENID，唯一身份，云函数生成 |
-| `nickname` | string | 2–32 字符 |
-| `avatar` | string | 默认头像或 `avatars/` 云文件 ID |
-| `school` | string | 2–60 字符 |
-| `campus` | string | 2–60 字符 |
-| `createdAt`, `updatedAt` | number | 毫秒时间戳 |
+| `_id` | string | 云函数取得的 OPENID，作为用户唯一 ID |
+| `nickname` | string | 2–32 字符；首次登录为“校园同学” |
+| `avatar` | string | 默认“同”或 `avatars/<openid>/...jpg` 的云文件 ID |
+| `school` | string | 固定“天津师范大学”，客户端不能更改 |
+| `campus` | string | 用户填写的通用校内范围，初始“校内”；不代表经过校园身份认证 |
+| `bio` | string | 选填简介，最多 160 字符 |
+| `createdAt`, `updatedAt` | number | 首次建档时间、最近资料更新时间 |
 
-首次 `login` 会自动创建默认资料。客户端提交的 ID 不参与建档。
+第一次调用 `login` 会自动创建用户；后续登录读取现有资料。旧版本中不一致的学校和虚构校区会在登录时归一化。`updateProfile` 只更新当前 OPENID 的文档。
 
 ## products
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `_id` | string | 云数据库自动生成 |
-| `sellerId` | string | 当前云函数上下文 OPENID，客户端不可指定 |
+| `sellerId` | string | 云函数从 OPENID 设置，客户端不可指定 |
+| `school` | string | 固定“天津师范大学” |
 | `title` | string | 2–60 字符 |
 | `description` | string | 5–1000 字符 |
 | `price`, `originalPrice` | number / null | 0.01–100000 元，最多两位小数；原价可为 null |
-| `category` | string | `books` / `digital` / `daily` / `sports` / `fashion` / `other` |
+| `category` | string | `books`、`digital`、`daily`、`sports`、`fashion`、`other` |
 | `condition` | string | 新旧程度，2–20 字符 |
-| `images` | string[] | 1–3 个由云函数重编码生成的 `images/` 文件 ID |
-| `location` | string | 交易地点，2–80 字符；前端映射至现有 `campus` 字段 |
-| `status` | string | `selling` / `sold` / `offline` |
-| `createdAt`, `updatedAt` | number | 毫秒时间戳 |
+| `images` | string[] | 1–3 个经云函数重编码生成的 `images/` 云文件 ID |
+| `location` | string | 校内面交范围，2–80 字符；前端兼容现有 `campus` 字段 |
+| `status` | string | `selling`、`sold`、`offline` |
+| `createdAt`, `updatedAt` | number | 创建和最近修改时间 |
 
-建议创建组合索引：`status + createdAt`（降序）、`status + category + createdAt`（降序）、`sellerId + createdAt`（降序）、`status + price`。搜索使用标题和描述的正则查询；数据量增长后应迁移到专用全文索引或搜索服务。列表目前最多返回 50 件，我的发布最多 100 件，收藏最多展示 50 件；后续需增加分页。
+列表只显示本校 `selling` 商品；下架商品仅卖家可在“我的发布”访问。更新状态、编辑和删除均先校验 `sellerId`。创建限制为每个微信身份每天最多 20 件。删除会清理相关收藏与不再被引用的商品图；若云存储删除失败，写入 `reports` 待处理。
 
 ## favorites
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `_id` | string | `SHA-256(userId:productId)`，从结构上防止重复收藏 |
-| `userId` | string | 当前云函数上下文 OPENID |
+| `_id` | string | `SHA-256(userId:productId)`，阻止同一用户重复收藏 |
+| `userId` | string | 云函数从 OPENID 设置 |
 | `productId` | string | 商品 `_id` |
-| `createdAt` | number | 毫秒时间戳 |
+| `createdAt` | number | 收藏时间 |
 
-建议创建 `userId + createdAt`（降序）和 `productId` 索引。`setFavorite` 是幂等写操作，商品删除时云函数清理相应收藏。
+`setFavorite` 是幂等状态设置。收藏不能由客户端指定其他用户的 `userId`，仅允许收藏本校在售商品。
 
 ## reports
 
-预留用户举报用途；当前云函数仅在图片清理失败时写入内部记录：`type=image_cleanup`、`status=pending`、`productId`、`fileIDs`、`reason`、`createdAt`。管理员应定期检查并重试这些记录。请勿将内部记录开放给客户端读取。
+一个集合保留两种记录，不另建审核系统：
 
-## 云存储目录
+- `type=product`：用户举报接口 `createReport` 的预留数据。字段为 `reporterId`（云函数 OPENID）、`productId`、`reason`（`prohibited` / `misleading` / `fraud` / `other`）、`description`（最多 500 字符）、`school`、`status=pending`、`createdAt`、`updatedAt`。当前没有举报页面或管理后台；同一用户对同一商品的待处理举报不重复创建，每天最多 10 次。
+- `type=image_cleanup`：图片清理失败的内部待办。字段为 `productId`、`fileIDs`、`reason`、`school`、`status=pending`、`createdAt`、`updatedAt`。管理员需定期检查日志并手动处理。
 
-- `incoming/<openid>/...`：客户端临时上传，仅同一微信身份可写，最大 5 MB。
-- `images/<openid>/...jpg`：云函数验证并重编码后的商品图。
-- `avatars/<openid>/...jpg`：云函数验证并重编码后的头像。
+不要允许客户端读取或直接写入 `reports`。
 
-存储自定义规则位于 `cloudbase/rules/storage.json`。云函数会在完成验证后清理临时文件；商品删除或编辑移除图片时清理正式图片。失败会写入 `reports` 待人工处理。建议另设临时目录生命周期清理策略。
+## 索引
+
+在云开发控制台“数据库 → 集合 → 索引管理”建立以下组合索引。`_id` 的默认索引无需重复建。控制台中的升/降序选择与下表一致；查询量较小时先创建至少前五项，后续依据实际查询错误和性能补齐。
+
+| 集合 | 字段顺序与方向 | 支持的查询 |
+| --- | --- | --- |
+| `products` | `school` 升序、`status` 升序、`createdAt` 降序 | 首页、最新排序 |
+| `products` | `school` 升序、`status` 升序、`category` 升序、`createdAt` 降序 | 分类最新 |
+| `products` | `school` 升序、`status` 升序、`price` 升序 | 低价/高价排序；高价若控制台提示另建降序索引 |
+| `products` | `sellerId` 升序、`school` 升序、`createdAt` 降序 | 我的发布 |
+| `favorites` | `userId` 升序、`createdAt` 降序 | 我的收藏 |
+| `favorites` | `productId` 升序 | 删除商品时清理收藏 |
+| `reports` | `type` 升序、`reporterId` 升序、`productId` 升序、`status` 升序 | 防重复举报 |
+| `reports` | `type` 升序、`reporterId` 升序、`createdAt` 降序 | 每日举报次数 |
+
+关键词搜索目前对标题和描述做转义后的正则匹配；数据量增加后需引入专用全文索引或搜索服务。商品列表上限 50 件、我的发布 100 件、收藏展示 50 件；大规模运营前需分页。
+
+## 云存储
+
+- `incoming/<openid>/...jpg`：小程序先上传的临时文件，最大 5 MB；云函数检验实际格式、单帧和像素后删除临时文件。
+- `images/<openid>/...jpg`：云函数写入的商品正式图片。
+- `avatars/<openid>/...jpg`：云函数写入的头像。
+
+云函数使用 Sharp 统一旋转、缩放、转成 JPEG。`cloudbase/rules/storage.json` 仅允许客户端向 `incoming/` 上传；正式目录不允许客户端写入。编辑、删除和失败回滚会清理无引用图片。未完成确认的临时上传应设置生命周期清理。

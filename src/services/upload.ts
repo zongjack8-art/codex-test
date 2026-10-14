@@ -42,3 +42,13 @@ export async function removeMockImage(filePath: string): Promise<void> {
   if (getDataMode() !== 'mock' || Taro.getEnv() !== Taro.ENV_TYPE.WEAPP || !/^wxfile:\/\/usr\//.test(filePath)) return
   try { await Taro.removeSavedFile({ filePath }) } catch { /* File may already be gone. */ }
 }
+
+export async function discardUploadedImages(fileIDs: string[], purpose: 'product' | 'avatar' = 'product'): Promise<void> {
+  if (!fileIDs.length) return
+  if (getDataMode() === 'cloud') {
+    const cloudFiles = fileIDs.filter(value => value.startsWith('cloud://'))
+    if (cloudFiles.length) await cloudCall('discardImages', { fileIDs: cloudFiles, purpose })
+    return
+  }
+  await Promise.all(fileIDs.map(removeMockImage))
+}

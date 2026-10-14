@@ -11,8 +11,10 @@ import type { Product } from '../../types/market'
 export default function FavoritesPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const busyRef = useRef(false)
-  useDidShow(() => { setLoading(true); getFavorites().then(setProducts).catch(error => Taro.showToast({ title: error.message, icon: 'none' })).finally(() => setLoading(false)) })
+  const load = () => { setLoading(true); setLoadError(''); getFavorites().then(setProducts).catch(() => setLoadError('请检查网络或云环境后重试')).finally(() => setLoading(false)) }
+  useDidShow(load)
 
   const remove = async (product: Product) => {
     if (busyRef.current) return
@@ -28,7 +30,7 @@ export default function FavoritesPage() {
   return <View className='page page--with-nav'>
     <View className='page-heading'><Text className='page-heading__eyebrow'>SAVED FOR LATER</Text><Text className='page-heading__title'>我的心动清单</Text><Text className='page-heading__desc'>喜欢的先收好，想起来就回来看看。</Text></View>
     <View className='content-pad'><View className='results-bar results-bar--single'><Text>{loading ? '正在整理清单…' : `已收藏 ${products.length} 件好物`}</Text></View>
-      {loading ? <ProductGridSkeleton /> : products.length ? <View className='product-grid'>{products.map(product => <ProductCard key={product.id} product={product} favorite onFavorite={remove} />)}</View> : <EmptyState kind='favorites' title='还没有收藏的宝贝' description='逛一逛，也许能遇到刚好需要的东西' action='去逛逛' onAction={() => Taro.reLaunch({ url: '/pages/index/index' })} />}
+      {loading ? <ProductGridSkeleton /> : loadError ? <EmptyState kind='error' title='暂时没能打开收藏' description={loadError} action='重试' onAction={load} /> : products.length ? <View className='product-grid'>{products.map(product => <ProductCard key={product.id} product={product} favorite onFavorite={remove} />)}</View> : <EmptyState kind='favorites' title='还没有收藏的宝贝' description='逛一逛，也许能遇到刚好需要的东西' action='去逛逛' onAction={() => Taro.reLaunch({ url: '/pages/index/index' })} />}
     </View>
     <TabNav active='favorites' />
   </View>

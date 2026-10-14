@@ -16,17 +16,21 @@ export default function DetailPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [favorite, setFavorite] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [favoriteBusy, setFavoriteBusy] = useState(false)
   const [sellerCount, setSellerCount] = useState<number | null>(null)
   const favoriteBusyRef = useRef(false)
-  useDidShow(() => {
+  const load = () => {
     setLoading(true)
+    setLoadError('')
+    setSellerCount(null)
     getProduct(id).then(item => {
       setProduct(item)
       if (item) getProducts().then(items => setSellerCount(items.filter(value => value.seller.id === item.seller.id).length)).catch(() => undefined)
-    }).catch(error => Taro.showToast({ title: error.message, icon: 'none' })).finally(() => setLoading(false))
+    }).catch(() => setLoadError('请检查网络或云环境后重试')).finally(() => setLoading(false))
     getFavoriteIds().then(ids => setFavorite(ids.includes(id))).catch(() => undefined)
-  })
+  }
+  useDidShow(load)
 
   const onFavorite = async () => {
     if (favoriteBusyRef.current) return
@@ -40,9 +44,10 @@ export default function DetailPage() {
     finally { favoriteBusyRef.current = false; setFavoriteBusy(false) }
   }
 
-  const contact = () => Taro.showModal({ title: '联系卖家', content: '当前是本机演示，暂未开通站内联系。真实交易请约在校内公共区域，当面验货后再付款。', showCancel: false })
+  const contact = () => Taro.showModal({ title: '联系卖家', content: '站内联系功能尚未开通。请在校内公共区域协商面交，当面验货后再付款。', showCancel: false })
 
   if (loading) return <View className='page detail-loading'><View className='detail-skeleton'><View /><View /><View /></View></View>
+  if (loadError) return <View className='page'><EmptyState kind='error' title='商品暂时无法加载' description={loadError} action='重试' onAction={load} /></View>
   if (!product) return <View className='page'><EmptyState kind='error' title='商品暂时找不到了' description='它可能已被删除，继续逛逛别的好物吧' action='返回首页' onAction={() => Taro.reLaunch({ url: '/pages/index/index' })} /></View>
 
   return <View className='page page--detail'>
@@ -58,7 +63,7 @@ export default function DetailPage() {
       </View>
       <View className='detail-section'><Text className='detail-section__title'>关于这件好物</Text><Text className='detail-section__body'>{product.description}</Text></View>
       <View className='detail-section detail-trade'><Text className='detail-section__title'>校内交易</Text><View className='detail-trade__row'><View className='detail-trade__icon'><Icon name='pin' size='md' /></View><View><Text>面交地点</Text><Text>{product.campus} · 可与卖家约校内公共区域</Text></View></View><View className='detail-trade__row'><View className='detail-trade__icon'><Icon name='shield' size='md' /></View><View><Text>安心提醒</Text><Text>见面确认商品状态，再完成交易</Text></View></View></View>
-      <View className='detail-section detail-seller'><Text className='detail-section__title'>发布同学</Text><View className='detail-seller__row'><Avatar className='detail-seller__avatar' value={product.seller.avatar} /><View className='detail-seller__info'><Text className='detail-seller__name'>{product.seller.nickname}</Text><Text>{product.seller.campus} · 校园用户</Text></View>{sellerCount !== null && <Badge tone='accent'>在售 {sellerCount} 件</Badge>}</View></View>
+      <View className='detail-section detail-seller'><Text className='detail-section__title'>发布同学</Text><View className='detail-seller__row'><Avatar className='detail-seller__avatar' value={product.seller.avatar} /><View className='detail-seller__info'><Text className='detail-seller__name'>{product.seller.nickname}</Text><Text>{product.seller.campus} · 微信用户</Text></View>{sellerCount !== null && <Badge tone='accent'>在售 {sellerCount} 件</Badge>}</View></View>
       <View className='detail-safe-note'><Icon name='shield' size='sm' /><Text>选择校内公共地点面交，请勿提前转账。</Text></View>
     </View>
     <View className='detail-actions'><View className={`detail-actions__favorite ${favorite ? 'is-active' : ''} ${favoriteBusy ? 'is-busy' : ''}`} onClick={onFavorite}><Icon name='heart' size='md' /><Text>{favorite ? '已收藏' : '收藏'}</Text></View><AppButton className='detail-actions__contact' onClick={contact} disabled={product.status !== 'selling'}>{product.status === 'selling' ? '联系卖家' : '当前不可交易'}</AppButton></View>

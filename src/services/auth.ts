@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro'
+import { campusConfig, normalizeLegacyLocation } from '../config/campus'
 import { demoUser } from '../data/mock'
 import type { ProfileInput, Session, UserProfile } from '../types/market'
 import { apiRequest } from './api'
@@ -11,11 +12,19 @@ let cloudSessionConfirmed = false
 
 export function getSession(): Session | null {
   const session = readLocal<Session | null>(SESSION_KEY, null)
-  return getDataMode() === 'mock' && session?.user.id !== demoUser.id ? null : session
+  const mode = getDataMode()
+  if (!session) return null
+  if (mode === 'mock') {
+    if (session.user.id !== demoUser.id) return null
+    return { ...session, user: { ...session.user, school: campusConfig.schoolName, campus: normalizeLegacyLocation(session.user.campus) } }
+  }
+  if (mode === 'cloud' && !cloudSessionConfirmed) return null
+  return session
 }
 
 export function signOut(): void {
   Taro.removeStorageSync(SESSION_KEY)
+  cloudSessionConfirmed = false
 }
 
 export async function loginWithWechat(): Promise<Session> {
@@ -56,7 +65,7 @@ export async function updateProfile(input: ProfileInput): Promise<UserProfile> {
   let user: UserProfile
   if (mode === 'cloud') user = await cloudCall<UserProfile>('updateProfile', { profile: input })
   else if (mode === 'api') user = await apiRequest<UserProfile>('/me', 'PATCH', input)
-  else user = { ...demoUser, ...input }
+  else user = { ...demoUser, ...input, school: campusConfig.schoolName, campus: normalizeLegacyLocation(input.campus) }
   writeLocal(SESSION_KEY, { ...getSession(), ...(mode === 'mock' ? { token: 'demo-only' } : {}), user })
   return user
 }

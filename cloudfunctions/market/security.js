@@ -1,4 +1,5 @@
 const { createHash } = require('node:crypto')
+const campus = require('./campus.json')
 
 class AppError extends Error {
   constructor(code, message) { super(message); this.code = code }
@@ -7,12 +8,13 @@ class AppError extends Error {
 const CATEGORIES = new Set(['books', 'digital', 'daily', 'sports', 'fashion', 'other'])
 const STATUSES = new Set(['selling', 'sold', 'offline'])
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const REPORT_REASONS = new Set(['prohibited', 'misleading', 'fraud', 'other'])
 
 function fail(code, message) { throw new AppError(code, message) }
 function cleanText(value, label, min, max) {
   if (typeof value !== 'string') fail('INVALID_INPUT', `${label}格式错误`)
   const text = value.trim().replace(/\r\n/g, '\n')
-  const controls = label === '描述' ? /[\u0000-\u0008\u000b-\u001f\u007f]/u : /[\u0000-\u001f\u007f]/u
+  const controls = label === '描述' || label === '个人简介' || label === '补充说明' ? /[\u0000-\u0008\u000b-\u001f\u007f]/u : /[\u0000-\u001f\u007f]/u
   if (text.length < min || text.length > max || controls.test(text) || /(?:https?:\/\/|www\.)/iu.test(text) || /(.)\1{9,}/u.test(text)) {
     fail('INVALID_INPUT', `${label}长度或内容不符合要求`)
   }
@@ -59,18 +61,29 @@ function validateProduct(input, openid) {
     category: input.category,
     condition: cleanText(input.condition, '新旧程度', 2, 20),
     images: validateImages(input.images, openid),
-    location: cleanText(input.location, '交易地点', 2, 80)
+    location: cleanText(input.location, '交易地点', 2, 80),
+    school: campus.schoolName
   }
 }
 function validateProfile(input, openid) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail('INVALID_INPUT', '资料内容无效')
-  const avatar = input.avatar || '🎓'
-  if (avatar !== '🎓' && !ownImage(avatar, openid, 'avatar')) fail('INVALID_INPUT', '头像必须由当前用户上传')
+  const avatar = input.avatar === '🎓' ? '同' : input.avatar || '同'
+  if (avatar !== '同' && !ownImage(avatar, openid, 'avatar')) fail('INVALID_INPUT', '头像必须由当前用户上传')
   return {
     nickname: cleanText(input.nickname, '昵称', 2, 32),
-    school: cleanText(input.school, '学校', 2, 60),
-    campus: cleanText(input.campus, '校区', 2, 60),
-    avatar
+    school: campus.schoolName,
+    campus: cleanText(input.campus, '校内范围', 2, 60),
+    avatar,
+    bio: input.bio == null ? '' : cleanText(input.bio, '个人简介', 0, 160)
+  }
+}
+function validateReport(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) fail('INVALID_INPUT', '举报内容无效')
+  if (!REPORT_REASONS.has(input.reason)) fail('INVALID_INPUT', '举报原因无效')
+  return {
+    productId: safeId(input.productId),
+    reason: input.reason,
+    description: input.description == null ? '' : cleanText(input.description, '补充说明', 0, 500)
   }
 }
 function favoriteId(openid, productId) {
@@ -83,4 +96,4 @@ function assertOwner(product, openid) {
   if (!product || product.sellerId !== openid) fail('FORBIDDEN', '只能操作自己发布的商品')
 }
 
-module.exports = { AppError, CATEGORIES, STATUSES, MAX_IMAGE_BYTES, fail, cleanText, safeId, cloudPath, ownImage, incomingImage, validateProduct, validateProfile, favoriteId, assertOwner, escapeRegExp }
+module.exports = { AppError, CATEGORIES, STATUSES, REPORT_REASONS, MAX_IMAGE_BYTES, fail, cleanText, safeId, cloudPath, ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, escapeRegExp }

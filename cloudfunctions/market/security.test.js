@@ -1,16 +1,18 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { validateProduct, validateProfile, assertOwner, favoriteId, incomingImage, escapeRegExp } = require('./security')
+const { validateProduct, validateProfile, validateReport, assertOwner, favoriteId, incomingImage, escapeRegExp } = require('./security')
+const campus = require('./campus.json')
 
 const openid = 'user_123'
 const image = `cloud://example.bucket/images/${openid}/12345678abcd.jpg`
-const product = { title: '九成新单车', description: '骑行正常，可在校门口面交', price: 199.5, category: 'sports', condition: '九成新', images: [image], location: '北区校区', sellerId: 'another-user', status: 'sold' }
+const product = { title: '九成新单车', description: '骑行正常，可在校内面交', price: 199.5, category: 'sports', condition: '九成新', images: [image], location: '校内面交', school: '其他学校', sellerId: 'another-user', status: 'sold' }
 
 test('商品输入只保留白名单字段，不能伪造卖家或状态', () => {
   const cleaned = validateProduct(product, openid)
   assert.equal(cleaned.sellerId, undefined)
   assert.equal(cleaned.status, undefined)
   assert.equal(cleaned.price, 199.5)
+  assert.equal(cleaned.school, campus.schoolName)
 })
 
 test('商品写操作拒绝非所有者', () => {
@@ -32,8 +34,14 @@ test('上传隔离目录必须与当前用户匹配', () => {
 })
 
 test('昵称头像和收藏 ID 校验', () => {
-  assert.throws(() => validateProfile({ nickname: '同学', school: '示例大学', campus: '北区', avatar: 'https://evil.invalid/a.png' }, openid), /头像/)
+  assert.throws(() => validateProfile({ nickname: '同学', school: '其他学校', campus: '校内', avatar: 'https://evil.invalid/a.png' }, openid), /头像/)
+  assert.equal(validateProfile({ nickname: '同学', school: '其他学校', campus: '校内', avatar: '同' }, openid).school, campus.schoolName)
   assert.equal(favoriteId(openid, 'p1'), favoriteId(openid, 'p1'))
   assert.notEqual(favoriteId(openid, 'p1'), favoriteId('another', 'p1'))
   assert.equal(escapeRegExp('iPad (Air)+'), 'iPad \\(Air\\)\\+')
+})
+
+test('举报输入只保留允许的字段', () => {
+  assert.deepEqual(validateReport({ productId: 'prod_1', reason: 'misleading', description: '图片与实物不一致', reporterId: 'forged' }), { productId: 'prod_1', reason: 'misleading', description: '图片与实物不一致' })
+  assert.throws(() => validateReport({ productId: 'prod_1', reason: 'anything' }), /举报原因/)
 })
