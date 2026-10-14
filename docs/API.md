@@ -62,6 +62,10 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 
 HTTP 请求中的买家、卖家、发送者、收件人和未读数字段不能决定真实归属。商品删除后仍保留已有会话和商品快照；不提供站内支付。
 
+## 订单
+
+Cloud 模式的订单调用 `market` action：`createOrder`、`listOrders`、`getOrder`、`confirmOrder`、`completeOrder`、`cancelOrder`。HTTP 适配层暂未实现，若后续接入，应提供 `POST /me/orders`、`GET /me/orders?role=buyer|seller`、`GET /me/orders/:id` 和订单确认、完成、取消的 POST 操作。创建请求只提交 `productId`；价格与买卖双方身份由服务端读取，订单状态流转由服务端验证。
+
 ## 图片上传
 
 `POST /uploads/images`：`multipart/form-data`，文件字段 `file`，Bearer 认证。响应 `{ "data": { "url": "https://..." } }`。服务端限制文件大小、MIME 类型、数量，重编码并移除元数据；返回可供微信小程序访问的 HTTPS 地址。

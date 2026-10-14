@@ -7,8 +7,9 @@ import { Badge } from '../../components/Badge'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import ProductPhoto from '../../components/ProductPhoto'
-import { currentChatUserId, startConversation } from '../../services/chat'
+import { startConversation } from '../../services/chat'
 import { getFavoriteIds, getProduct, getProducts, toggleFavorite } from '../../services/products'
+import { createOrder } from '../../services/orders'
 import type { Product } from '../../types/market'
 import { formatProductTime } from '../../utils/format'
 
@@ -20,22 +21,25 @@ export default function DetailPage() {
   const [loadError, setLoadError] = useState('')
   const [favoriteBusy, setFavoriteBusy] = useState(false)
   const [contactBusy, setContactBusy] = useState(false)
+  const [orderBusy, setOrderBusy] = useState(false)
   const [sellerCount, setSellerCount] = useState<number | null>(null)
   const favoriteBusyRef = useRef(false)
+  const orderBusyRef = useRef(false)
   const load = () => {
     setLoading(true)
     setLoadError('')
     setSellerCount(null)
+    setFavorite(false)
     getProduct(id).then(item => {
       setProduct(item)
       if (item) getProducts().then(items => setSellerCount(items.filter(value => value.seller.id === item.seller.id).length)).catch(() => undefined)
+      if (item?.viewerIsSeller === false && item.status === 'selling') getFavoriteIds().then(ids => setFavorite(ids.includes(id))).catch(() => undefined)
     }).catch(() => setLoadError('请检查网络或云环境后重试')).finally(() => setLoading(false))
-    getFavoriteIds().then(ids => setFavorite(ids.includes(id))).catch(() => undefined)
   }
   useDidShow(load)
 
   const onFavorite = async () => {
-    if (favoriteBusyRef.current) return
+    if (favoriteBusyRef.current || product?.viewerIsSeller !== false || product.status !== 'selling') return
     favoriteBusyRef.current = true
     setFavoriteBusy(true)
     try {
@@ -47,14 +51,25 @@ export default function DetailPage() {
   }
 
   const contact = async () => {
-    if (!product || contactBusy) return
+    if (!product || contactBusy || product.viewerIsSeller !== false || product.status !== 'selling') return
     setContactBusy(true)
     try {
-      if (product.seller.id === await currentChatUserId()) return Taro.showToast({ title: '这是你发布的商品', icon: 'none' })
       const conversation = await startConversation(product.id)
       await Taro.navigateTo({ url: `/pages/chat/index?id=${encodeURIComponent(conversation.id)}` })
     } catch (error) { Taro.showToast({ title: (error as Error).message || '暂时无法联系卖家，请重试', icon: 'none' }) }
     finally { setContactBusy(false) }
+  }
+
+  const want = async () => {
+    if (!product || product.viewerIsSeller !== false || product.status !== 'selling' || orderBusyRef.current) return
+    orderBusyRef.current = true
+    setOrderBusy(true)
+    try {
+      const order = await createOrder(product.id)
+      Taro.showToast({ title: '已向卖家发起订单', icon: 'none' })
+      await Taro.navigateTo({ url: `/pages/order-detail/index?id=${encodeURIComponent(order.id)}` })
+    } catch (error) { Taro.showToast({ title: (error as Error).message || '发起订单失败，请重试', icon: 'none' }) }
+    finally { orderBusyRef.current = false; setOrderBusy(false) }
   }
 
   if (loading) return <View className='page detail-loading'><View className='detail-skeleton'><View /><View /><View /></View></View>
@@ -77,6 +92,11 @@ export default function DetailPage() {
       <View className='detail-section detail-seller'><Text className='detail-section__title'>发布同学</Text><View className='detail-seller__row'><Avatar className='detail-seller__avatar' value={product.seller.avatar} /><View className='detail-seller__info'><Text className='detail-seller__name'>{product.seller.nickname}</Text><Text>{product.seller.campus} · 微信用户</Text></View>{sellerCount !== null && <Badge tone='accent'>在售 {sellerCount} 件</Badge>}</View></View>
       <View className='detail-safe-note'><Icon name='shield' size='sm' /><Text>选择校内公共地点面交，请勿提前转账。</Text></View>
     </View>
-    <View className='detail-actions'><View className={`detail-actions__favorite ${favorite ? 'is-active' : ''} ${favoriteBusy ? 'is-busy' : ''}`} onClick={onFavorite}><Icon name='heart' size='md' /><Text>{favorite ? '已收藏' : '收藏'}</Text></View><AppButton className='detail-actions__contact' onClick={contact} disabled={product.status !== 'selling'} loading={contactBusy}>{product.status === 'selling' ? '联系卖家' : '当前不可交易'}</AppButton></View>
+    <View className='detail-actions'>
+      {product.viewerIsSeller === true ? <AppButton block onClick={() => Taro.navigateTo({ url: '/pages/my-listings/index' })}>管理我的商品</AppButton>
+        : product.viewerIsSeller !== false ? <AppButton block variant='secondary' onClick={load}>重新加载商品信息</AppButton>
+          : product.status === 'selling' ? <><View className={`detail-actions__favorite ${favorite ? 'is-active' : ''} ${favoriteBusy ? 'is-busy' : ''}`} onClick={onFavorite}><Icon name='heart' size='md' /><Text>{favorite ? '已收藏' : '收藏'}</Text></View><AppButton className='detail-actions__want' variant='secondary' onClick={want} loading={orderBusy}>我想要</AppButton><AppButton className='detail-actions__contact' onClick={contact} loading={contactBusy}>联系卖家</AppButton></>
+            : <Text className='detail-actions__unavailable'>{product.status === 'sold' ? '商品已售出' : '商品已下架'}，暂不可发起订单</Text>}
+    </View>
   </View>
 }

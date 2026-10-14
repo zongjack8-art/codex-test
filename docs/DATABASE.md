@@ -1,8 +1,8 @@
 # 天津师范大学 CloudBase 数据结构
 
-目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports`、`conversations`、`messages` 六个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
+目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports`、`conversations`、`messages`、`orders` 七个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
 
-六个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
+七个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
 
 ## users
 
@@ -86,6 +86,22 @@
 
 仅会话买卖双方可通过 `market` 云函数读取或发送消息。每人每会话每分钟最多发送 20 条；聊天页每次读取最近 100 条，15 秒低频刷新。第一版没有聊天图片、文件、已读回执或支付。
 
+## orders
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `_id` | string | 云函数生成的随机订单 ID |
+| `productId` | string | 对应商品；删除商品时保留订单快照 |
+| `buyerId`, `sellerId` | string | 云函数从 OPENID 与商品记录确定，客户端不可指定 |
+| `productTitle`, `productImage` | string | 创建时保存的商品标题和首图快照 |
+| `amount` | number | 创建时从数据库商品读取的人民币元价格；不信任客户端金额 |
+| `status` | string | `pending` 待卖家确认、`confirmed` 待面交、`completed` 已完成、`cancelled` 已取消 |
+| `activeKey` | string | 活跃时为 SHA-256(buyerId:productId)，结束后改为 `closed_<orderId>`；唯一索引防并发重复下单 |
+| `createdAt`, `updatedAt` | number | Unix 毫秒时间戳 |
+| `completedAt`, `cancelledAt` | number / null | 完成和取消时间 |
+
+只允许买卖双方读取订单。卖家可确认 `pending → confirmed`，卖家可将 `confirmed → completed`，完成时在同一云数据库事务中把商品设为 `sold`。买卖双方可取消 `pending/confirmed → cancelled`；完成或取消后不可继续流转。取消后再次下单会创建新记录，历史订单仍保留。订单完成或商品删除均不清理聊天记录。订单不表示已付款或平台担保。
+
 ## 索引
 
 在云开发控制台“数据库 → 集合 → 索引管理”建立以下组合索引。`_id` 的默认索引无需重复建。控制台中的升/降序选择与下表一致；查询量较小时先创建至少前五项，后续依据实际查询错误和性能补齐。
@@ -104,6 +120,10 @@
 | `conversations` | `sellerId` 升序、`lastMessageAt` 降序 | 当前卖家的最近会话 |
 | `messages` | `conversationId` 升序、`createdAt` 降序 | 会话内最近消息 |
 | `messages` | `conversationId` 升序、`senderId` 升序、`createdAt` 降序 | 每人每分钟发送次数限制 |
+| `orders` | `activeKey` 升序，**唯一索引** | 同一买家对同一商品只能有一笔活跃订单；必须在真实测试前建立 |
+| `orders` | `buyerId` 升序、`productId` 升序、`status` 升序 | 下单前查询活跃订单 |
+| `orders` | `buyerId` 升序、`createdAt` 降序 | 我买到的 |
+| `orders` | `sellerId` 升序、`createdAt` 降序 | 我卖出的 |
 
 `conversations._id` 已编码买家和商品，唯一性由数据库默认 `_id` 索引保证，无需另建“买家 + 商品”唯一索引。实际控制台如对某个组合查询提示缺索引，按提示补建，并记录在本表。聊天未读总数分批读取双方会话计数，最多扫描每侧 1000 条；运营规模超过此上限前需改为专用聚合统计。
 
