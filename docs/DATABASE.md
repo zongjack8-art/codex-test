@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | `_id` | string | 云函数取得的 OPENID，作为用户唯一 ID |
 | `nickname` | string | 2–32 字符；首次登录为“校园同学” |
-| `avatar` | string | 默认“同”或 `avatars/<openid>/...jpg` 的云文件 ID |
+| `avatar` | string | 默认“同”或 `avatars/<openid>/` 下的云文件 ID |
 | `school` | string | 固定“天津师范大学”，客户端不能更改 |
 | `campus` | string | 用户填写的通用校内范围，初始“校内”；不代表经过校园身份认证 |
 | `bio` | string | 选填简介，最多 160 字符 |
@@ -30,7 +30,7 @@
 | `price`, `originalPrice` | number / null | 0.01–100000 元，最多两位小数；原价可为 null |
 | `category` | string | `books`、`digital`、`daily`、`sports`、`fashion`、`other` |
 | `condition` | string | 新旧程度，2–20 字符 |
-| `images` | string[] | 1–3 个经云函数重编码生成的 `images/` 云文件 ID |
+| `images` | string[] | 1–3 个经云函数校验路径、大小和文件头后保存的 `images/` 云文件 ID |
 | `location` | string | 校内面交范围，2–80 字符；前端兼容现有 `campus` 字段 |
 | `status` | string | `selling`、`sold`、`offline` |
 | `createdAt`, `updatedAt` | number | 创建和最近修改时间 |
@@ -111,8 +111,8 @@
 
 ## 云存储
 
-- `incoming/<openid>/...jpg`：小程序先上传的临时文件，最大 5 MB；云函数检验实际格式、单帧和像素后删除临时文件。
-- `images/<openid>/...jpg`：云函数写入的商品正式图片。
-- `avatars/<openid>/...jpg`：云函数写入的头像。
+- `incoming/<openid>/...jpg`：小程序先上传的临时文件，最大 5 MB；云函数校验路径、大小和文件头后删除临时文件。
+- `images/<openid>/...jpg|png|webp`：云函数写入的商品正式图片，扩展名取实际识别格式。
+- `avatars/<openid>/...jpg|png|webp`：云函数写入的头像。
 
-云函数使用 Sharp 统一旋转、缩放、转成 JPEG。`cloudbase/rules/storage.json` 仅允许客户端向 `incoming/` 上传；正式目录不允许客户端写入。编辑、删除和失败回滚会清理无引用图片。未完成确认的临时上传应设置生命周期清理。
+当前云函数没有图片重编码或元数据清除；文件头检查不能替代完整解码验证。`cloudbase/rules/storage.json` 仅允许客户端向 `incoming/` 上传；正式目录不允许客户端写入。编辑、删除和失败回滚会清理当前卖家目录下的无引用图片。未完成确认的临时上传应设置生命周期清理。
