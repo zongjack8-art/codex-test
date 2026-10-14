@@ -110,7 +110,7 @@ async function run(action, event) {
     const category = filters.category && filters.category !== 'all' ? filters.category : undefined
     if (category && !CATEGORIES.has(category)) fail('INVALID_INPUT', '商品分类无效')
     const keyword = filters.keyword ? cleanText(filters.keyword, '关键词', 1, 40) : ''
-    const base = { status: 'selling', school: campus.schoolName, ...(category ? { category } : {}) }
+    const base = { status: _.in(['selling', 'active']), school: campus.schoolName, ...(category ? { category } : {}) }
     const regex = keyword ? db.RegExp({ regexp: escapeRegExp(keyword), options: 'i' }) : null
     const condition = regex ? _.or([{ ...base, title: regex }, { ...base, description: regex }]) : base
     const sort = filters.sort === 'priceAsc' ? ['price', 'asc'] : filters.sort === 'priceDesc' ? ['price', 'desc'] : ['createdAt', 'desc']
@@ -119,7 +119,7 @@ async function run(action, event) {
   }
   if (action === 'getProduct') {
     const item = await one(products, safeId(event.id))
-    if (!item || (item.school && item.school !== campus.schoolName) || (item.status === 'offline' && item.sellerId !== cloud.getWXContext().OPENID)) return null
+    if (!item || (item.school && item.school !== campus.schoolName)) return null
     return (await hydrate([item]))[0]
   }
 
@@ -278,7 +278,7 @@ async function run(action, event) {
     const key = favoriteId(openid, id)
     if (event.favorited) {
       const item = await one(products, id)
-      if (!item || item.school !== campus.schoolName || item.status !== 'selling') fail('NOT_FOUND', '商品未在售')
+      if (!item || (item.school && item.school !== campus.schoolName) || productStatus(item.status) !== 'selling') fail('NOT_FOUND', '商品未在售')
       if (!await one(favorites, key)) {
         const count = await favorites.where({ userId: openid }).count()
         if (count.total >= 500) fail('RATE_LIMITED', '收藏数量已达上限')
@@ -293,7 +293,7 @@ async function run(action, event) {
   if (action === 'createReport') {
     const report = validateReport(event.report)
     const item = await one(products, report.productId)
-    if (!item || item.school !== campus.schoolName) fail('NOT_FOUND', '商品不存在')
+    if (!item || (item.school && item.school !== campus.schoolName)) fail('NOT_FOUND', '商品不存在')
     if (item.sellerId === openid) fail('INVALID_INPUT', '不能举报自己的商品')
     const duplicate = await reports.where({ type: 'product', reporterId: openid, productId: report.productId, status: 'pending' }).limit(1).get()
     if (duplicate.data.length) return { created: false }

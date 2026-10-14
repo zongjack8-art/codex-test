@@ -1,5 +1,5 @@
 const { createHash } = require('node:crypto')
-const { cleanText, fail, safeId } = require('./security')
+const { cleanText, fail, safeId, productStatus } = require('./security')
 const campus = require('./campus.json')
 
 const conversationId = (buyerId, productId) => `conv_${createHash('sha256').update(`${buyerId}:${productId}`).digest('hex')}`
@@ -32,7 +32,7 @@ function createChatHandler({ db, users, products, conversations, messages, ensur
       return {
         id: item._id, productId: item.productId, buyerId: item.buyerId, sellerId: item.sellerId,
         other: { id: otherId, nickname: person?.nickname || '校园同学', avatar: person?.avatar || '同' },
-        product: product ? { title: product.title, price: product.price, image: product.images?.[0] || '', status: product.status } : { ...item.productSnapshot, status: 'deleted' },
+        product: product ? { title: product.title, price: product.price, image: product.images?.[0] || '', status: productStatus(product.status) } : { ...item.productSnapshot, status: 'deleted' },
         lastMessage: item.lastMessage || '', lastMessageAt: item.lastMessageAt || item.createdAt,
         unreadCount: item.buyerId === openid ? item.buyerUnreadCount || 0 : item.sellerUnreadCount || 0,
         createdAt: item.createdAt
@@ -64,7 +64,7 @@ function createChatHandler({ db, users, products, conversations, messages, ensur
     if (action === 'startConversation') {
       const productId = safeId(event.productId)
       const product = await one(products, productId)
-      if (!product || product.school !== campus.schoolName || product.status !== 'selling') fail('NOT_FOUND', '这件商品当前无法联系卖家')
+      if (!product || (product.school && product.school !== campus.schoolName) || productStatus(product.status) !== 'selling') fail('NOT_FOUND', '这件商品当前无法联系卖家')
       if (product.sellerId === openid) fail('INVALID_INPUT', '不能给自己发送消息')
       await ensureUser(openid)
       const id = conversationId(openid, productId)
@@ -75,7 +75,7 @@ function createChatHandler({ db, users, products, conversations, messages, ensur
           await conversations.add({ data: {
             _id: id, productId, buyerId: openid, sellerId: product.sellerId,
             participantIds: [openid, product.sellerId],
-            productSnapshot: { title: product.title, price: product.price, image: product.images?.[0] || '', status: product.status },
+            productSnapshot: { title: product.title, price: product.price, image: product.images?.[0] || '', status: productStatus(product.status) },
             lastMessage: '', lastMessageAt: now, buyerUnreadCount: 0, sellerUnreadCount: 0,
             status: 'active', createdAt: now, updatedAt: now
           } })

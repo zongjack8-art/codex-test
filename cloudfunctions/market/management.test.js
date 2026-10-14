@@ -11,7 +11,7 @@ function marketFixture() {
     products: [
       { _id: 'p1', sellerId: 'owner', school: campus.schoolName, title: '九成新单车', description: '骑行正常，方便校内面交', price: 199, category: 'sports', condition: '九成新', images: [image, foreignImage], location: '校内面交', status: 'selling', createdAt: 10 },
       { _id: 'legacy', sellerId: 'owner', title: '旧版商品', description: '旧版测试商品', price: 20, category: 'books', condition: '八成新', images: [], createdAt: 1 },
-      { _id: 'other', sellerId: 'other_user', school: campus.schoolName, title: '别人的书', status: 'selling', createdAt: 2 }
+      { _id: 'other', sellerId: 'other_user', school: campus.schoolName, title: '别人的书', status: 'active', createdAt: 2 }
     ],
     favorites: [{ _id: 'fav1', productId: 'p1', userId: 'other_user' }],
     reports: [],
@@ -91,6 +91,7 @@ test('编辑、下架、重新上架、售出只影响卖家商品和公共在�
   assert.equal(fx.rows.products[0].status, 'selling')
   assert.deepEqual(fx.deletedFiles, [], 'editing a legacy record must not delete another user image')
   assert.equal((await fx.main({ action: 'listProducts' })).data.some(item => item._id === 'p1'), true)
+  assert.equal((await fx.main({ action: 'listProducts' })).data.some(item => item._id === 'other'), true, '旧版 active 商品按在售进入公共列表')
   assert.equal((await fx.main({ action: 'setProductStatus', id: 'p1', status: 'offline' })).ok, true)
   assert.equal((await fx.main({ action: 'listProducts' })).data.some(item => item._id === 'p1'), false)
   assert.equal((await fx.main({ action: 'setProductStatus', id: 'p1', status: 'selling' })).ok, true)

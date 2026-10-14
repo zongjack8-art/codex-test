@@ -29,7 +29,8 @@ interface CloudProduct {
 }
 
 function productStatus(status: CloudProduct['status']): ProductStatus {
-  return status === 'sold' || status === 'offline' ? status : 'selling'
+  if (status === 'sold' || status === 'offline') return status
+  return status === 'selling' || status === 'active' || !status ? 'selling' : 'offline'
 }
 
 function fromCloud(item: CloudProduct): Product {
@@ -58,7 +59,7 @@ function localProducts(): Product[] {
     // Refresh built-in demo listings without overwriting user-created local listings.
     const seed = mockProducts.find(item => item.id === product.id)
     const item = seed && product.seller.id !== demoUser.id ? { ...seed, status: product.status } : product
-    return { ...item, campus: normalizeLegacyLocation(item.campus), seller: item.seller.id === demoUser.id ? currentUser : { ...item.seller, school: campusConfig.schoolName, campus: normalizeLegacyLocation(item.seller.campus) === campusConfig.defaultTradeLocation ? campusConfig.campusName : item.seller.campus } }
+    return { ...item, status: productStatus(item.status), campus: normalizeLegacyLocation(item.campus), seller: item.seller.id === demoUser.id ? currentUser : { ...item.seller, school: campusConfig.schoolName, campus: normalizeLegacyLocation(item.seller.campus) === campusConfig.defaultTradeLocation ? campusConfig.campusName : item.seller.campus } }
   })
 }
 

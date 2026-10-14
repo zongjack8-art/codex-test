@@ -5,6 +5,7 @@ const campus = require('./campus.json')
 
 test('云函数忽略客户端伪造的用户、商品和举报归属', async () => {
   const rows = Object.fromEntries(['users', 'products', 'favorites', 'reports'].map(name => [name, new Map()]))
+  let openid = 'real_user'
   let nextId = 0
   const matchValue = (actual, expected) => {
     if (expected && typeof expected === 'object' && expected.operator === 'in') return expected.values.includes(actual)
@@ -46,7 +47,7 @@ test('云函数忽略客户端伪造的用户、商品和举报归属', async ()
     DYNAMIC_CURRENT_ENV: 'test',
     init() {},
     database() { return fakeDb },
-    getWXContext() { return { OPENID: 'real_user' } },
+    getWXContext() { return { OPENID: openid } },
     async downloadFile() { return { fileContent: Buffer.from('image bytes') } }
   }
   const originalLoad = Module._load
@@ -84,8 +85,29 @@ test('云函数忽略客户端伪造的用户、商品和举报归属', async ()
   await main({ action: 'setFavorite', id: product._id, favorited: true, userId: 'attacker' })
   assert.equal(rows.favorites.size, 1)
 
+  openid = 'buyer_user'
+  product.status = 'sold'
+  assert.equal((await main({ action: 'setFavorite', id: product._id, favorited: true })).error.code, 'NOT_FOUND')
+  product.status = 'offline'
+  assert.equal((await main({ action: 'setFavorite', id: product._id, favorited: true })).error.code, 'NOT_FOUND')
+  assert.equal((await main({ action: 'getProduct', id: product._id })).data.status, 'offline', '旧链接可查看下架状态')
+  product.status = 'active'
+  assert.equal((await main({ action: 'setFavorite', id: product._id, favorited: true })).ok, true)
+  product.status = undefined
+  assert.equal((await main({ action: 'getProduct', id: product._id })).ok, true)
+  assert.equal((await main({ action: 'setFavorite', id: product._id, favorited: true })).ok, true)
+  openid = 'real_user'
+
   rows.products.set('other_product', { ...product, _id: 'other_product', sellerId: 'another_user' })
+  assert.equal((await main({ action: 'createReport', report: { productId: product._id, reason: 'other' } })).error.code, 'INVALID_INPUT', '卖家不可举报自己')
+  assert.equal((await main({ action: 'createReport', report: { productId: 'missing', reason: 'fraud' } })).error.code, 'NOT_FOUND')
+  const beforeReport = JSON.stringify(rows.products.get('other_product'))
   const report = await main({ action: 'createReport', report: { productId: 'other_product', reason: 'misleading', description: '图片不实', reporterId: 'attacker' } })
   assert.equal(report.ok, true)
   assert.equal([...rows.reports.values()][0].reporterId, 'real_user')
+  assert.equal([...rows.reports.values()][0].reason, 'misleading')
+  assert.equal([...rows.reports.values()][0].status, 'pending')
+  assert.deepEqual((await main({ action: 'createReport', report: { productId: 'other_product', reason: 'fraud' } })).data, { created: false })
+  assert.equal(rows.reports.size, 1)
+  assert.equal(JSON.stringify(rows.products.get('other_product')), beforeReport, '举报不得修改商品')
 })

@@ -46,4 +46,9 @@ test('Mock 商品管理保留本地持久化、公共在售过滤与所有权限
   await service.deleteProduct('own')
   assert.equal((await service.getMyProducts()).length, 0)
   assert.equal(storage.get('campusmarket.products.v2').length, 1)
+  storage.set('campusmarket.products.v2', [
+    { ...products[0], id: 'legacy-active', status: 'active' },
+    { ...products[0], id: 'legacy-empty', status: undefined }
+  ])
+  assert.deepEqual((await service.getProducts()).map(item => item.status), ['selling', 'selling'])
 })

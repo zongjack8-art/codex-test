@@ -35,7 +35,7 @@
 | `status` | string | `selling`、`sold`、`offline` |
 | `createdAt`, `updatedAt` | number | 创建和最近修改时间 |
 
-公共列表只显示本校 `selling` 商品；卖家的“我的发布”展示自己的全部状态。状态流转固定为 `selling → sold/offline`、`offline → selling`；`sold` 为终态，只能删除。编辑仅允许 `selling/offline`。更新状态、编辑和删除均先校验 `sellerId`。旧商品缺少 `status` 或使用 `active` 时，个人列表按在售显示，状态操作按在售处理；缺少 `location`、`createdAt` 时前端使用安全的展示回退，无需清空现有商品。创建限制为每个微信身份每天最多 20 件。删除会清理相关收藏与不再被引用的商品图，但保留聊天会话和消息；若云存储删除失败，写入 `reports` 待处理。
+公共列表只显示本校 `selling` 商品及旧版 `active` 商品；卖家的“我的发布”展示自己的全部状态。状态流转固定为 `selling → sold/offline`、`offline → selling`；`sold` 为终态，只能删除。编辑仅允许 `selling/offline`。更新状态、编辑和删除均先校验 `sellerId`。旧商品缺少 `status` 或使用 `active` 时，详情页按在售显示，状态操作按在售处理；缺少 `location`、`createdAt` 时前端使用安全的展示回退，无需清空现有商品。创建限制为每个微信身份每天最多 20 件。删除会清理相关收藏与不再被引用的商品图，但保留聊天会话和消息；若云存储删除失败，写入 `reports` 待处理。
 
 ## favorites
 
@@ -52,7 +52,7 @@
 
 一个集合保留两种记录，不另建审核系统：
 
-- `type=product`：用户举报接口 `createReport` 的预留数据。字段为 `reporterId`（云函数 OPENID）、`productId`、`reason`（`prohibited` / `misleading` / `fraud` / `other`）、`description`（最多 500 字符）、`school`、`status=pending`、`createdAt`、`updatedAt`。当前没有举报页面或管理后台；同一用户对同一商品的待处理举报不重复创建，每天最多 10 次。
+- `type=product`：商品详情页的举报通过现有 `createReport` 写入。字段为 `reporterId`（云函数 OPENID）、`productId`、`reason`（`prohibited` 违规商品 / `misleading` 虚假信息 / `fraud` 疑似诈骗 / `other` 其他）、`description`（最多 500 字符）、`school`、`status=pending`、`createdAt`、`updatedAt`。卖家不能举报自己的商品；同一用户对同一商品的待处理举报不重复创建，每天最多 10 次。当前没有审核后台。
 - `type=image_cleanup`：图片清理失败的内部待办。字段为 `productId`、`fileIDs`、`reason`、`school`、`status=pending`、`createdAt`、`updatedAt`。管理员需定期检查日志并手动处理。
 
 不要允许客户端读取或直接写入 `reports`。

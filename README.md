@@ -59,6 +59,6 @@ Mock 商品在 `src/data/mock.ts`。商品、收藏、聊天、个人资料和�
 TARO_APP_DATA_SOURCE=api TARO_APP_API_BASE_URL=https://api.example.edu pnpm build:weapp
 ```
 
-`src/services/products.ts` 负责商品与收藏，`src/services/chat.ts` 负责站内消息，`src/services/auth.ts` 负责用户，`src/services/upload.ts` 负责上传，`src/services/reports.ts` 预留举报接口，`src/services/cloudbase.ts` 只封装云调用。CloudBase 小程序不需要在前端配置 AppSecret。H5 真实微信登录需要独立网页授权后端。
+`src/services/products.ts` 负责商品与收藏，`src/services/chat.ts` 负责站内消息，`src/services/auth.ts` 负责用户，`src/services/upload.ts` 负责上传，`src/services/reports.ts` 负责商品详情举报，`src/services/cloudbase.ts` 只封装云调用。CloudBase 小程序不需要在前端配置 AppSecret。H5 真实微信登录需要独立网页授权后端。
 
 其他设计文档：[数据库设计](docs/DATABASE.md)、[安全说明](SECURITY.md)。

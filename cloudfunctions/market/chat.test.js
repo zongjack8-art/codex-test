@@ -103,3 +103,21 @@ test('未读只增加收件人一侧，已读只清空当前参与者一侧', as
   await chat('markConversationRead', { id }, 'buyer')
   assert.equal(rows.conversations.get(id).buyerUnreadCount, 0)
 })
+
+test('已售或已下架不能新建联系，旧状态可联系且原有聊天仍可查看', async () => {
+  const { chat, rows } = fixture()
+  const product = rows.products.get('product_1')
+  product.status = 'sold'
+  await assert.rejects(chat('startConversation', { productId: 'product_1' }, 'buyer'), error => error.code === 'NOT_FOUND')
+  product.status = 'offline'
+  await assert.rejects(chat('startConversation', { productId: 'product_1' }, 'buyer'), error => error.code === 'NOT_FOUND')
+  product.status = 'active'
+  const conversation = await chat('startConversation', { productId: 'product_1' }, 'buyer')
+  assert.equal(conversation.product.status, 'selling')
+  product.status = 'sold'
+  const history = await chat('getConversation', { id: conversation.id }, 'buyer')
+  assert.equal(history.product.status, 'sold')
+  assert.equal((await chat('listMessages', { id: conversation.id }, 'buyer')).length, 0)
+  product.status = undefined
+  assert.equal((await chat('getConversation', { id: conversation.id }, 'buyer')).product.status, 'selling')
+})
