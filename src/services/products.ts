@@ -24,6 +24,7 @@ interface CloudProduct {
   images: string[]
   location?: string
   status?: ProductStatus | 'active'
+  viewerIsSeller?: boolean
   createdAt?: number | string
   updatedAt?: number | string
 }
@@ -46,6 +47,7 @@ function fromCloud(item: CloudProduct): Product {
     images: Array.isArray(item.images) ? item.images : [],
     campus: normalizeLegacyLocation(item.location),
     status: productStatus(item.status),
+    viewerIsSeller: item.viewerIsSeller,
     createdAt: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : '',
     seller: item.seller || { id: item.sellerId, nickname: '校园同学', campus: campusConfig.campusName, school: campusConfig.schoolName, avatar: '同' },
     coverEmoji: '🎁',
@@ -91,7 +93,8 @@ export async function getProduct(id: string): Promise<Product | null> {
     return item ? fromCloud(item) : null
   }
   if (getDataMode() === 'api') return apiRequest<Product>(`/products/${encodeURIComponent(id)}`)
-  return localProducts().find(product => product.id === id) || null
+  const product = localProducts().find(item => item.id === id)
+  return product ? { ...product, viewerIsSeller: product.seller.id === demoUser.id } : null
 }
 
 export async function createProduct(input: ProductInput): Promise<Product> {

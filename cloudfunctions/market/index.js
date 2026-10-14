@@ -118,9 +118,10 @@ async function run(action, event) {
     return hydrate(result.data)
   }
   if (action === 'getProduct') {
+    const openid = identity()
     const item = await one(products, safeId(event.id))
     if (!item || (item.school && item.school !== campus.schoolName)) return null
-    return (await hydrate([item]))[0]
+    return { ...(await hydrate([item]))[0], viewerIsSeller: item.sellerId === openid }
   }
 
   const openid = identity()

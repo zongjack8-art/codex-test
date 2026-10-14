@@ -30,6 +30,8 @@ test('Mock 商品管理保留本地持久化、公共在售过滤与所有权限
   }, moduleLike, moduleLike.exports)
   const service = moduleLike.exports
   assert.deepEqual((await service.getMyProducts()).map(item => item.id), ['own'])
+  assert.equal((await service.getProduct('own')).viewerIsSeller, true)
+  assert.equal((await service.getProduct('other')).viewerIsSeller, false)
   assert.deepEqual((await service.getProducts()).map(item => item.id), ['other', 'own'])
   await assert.rejects(service.setProductStatus('other', 'offline'), /无权/)
   await service.setProductStatus('own', 'offline')

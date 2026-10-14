@@ -78,6 +78,9 @@ test('云函数忽略客户端伪造的用户、商品和举报归属', async ()
   assert.equal(product.sellerId, 'real_user')
   assert.equal(product.school, campus.schoolName)
   assert.equal(product.status, 'selling')
+  const ownerDetail = await main({ action: 'getProduct', id: product._id, openid: 'forged_buyer', userId: 'forged_buyer' })
+  assert.equal(ownerDetail.ok, true)
+  assert.equal(ownerDetail.data.viewerIsSeller, true, '归属只按当前微信 OPENID 和数据库 sellerId 计算')
 
   const favorite = await main({ action: 'setFavorite', id: product._id, favorited: true, userId: 'attacker' })
   assert.equal(favorite.ok, true)
@@ -86,6 +89,9 @@ test('云函数忽略客户端伪造的用户、商品和举报归属', async ()
   assert.equal(rows.favorites.size, 1)
 
   openid = 'buyer_user'
+  const buyerDetail = await main({ action: 'getProduct', id: product._id, sellerId: 'buyer_user', openid: 'real_user' })
+  assert.equal(buyerDetail.ok, true)
+  assert.equal(buyerDetail.data.viewerIsSeller, false)
   product.status = 'sold'
   assert.equal((await main({ action: 'setFavorite', id: product._id, favorited: true })).error.code, 'NOT_FOUND')
   product.status = 'offline'

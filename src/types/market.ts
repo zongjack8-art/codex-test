@@ -37,6 +37,8 @@ export interface Product {
   seller: Seller
   createdAt: string
   status: ProductStatus
+  /** Set by getProduct; in Cloud mode this comes from the market function's OPENID check. */
+  viewerIsSeller?: boolean
 }
 
 export interface ProductInput {
