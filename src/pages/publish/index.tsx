@@ -2,6 +2,7 @@ import { Input, Text, Textarea, View } from '@tarojs/components'
 import Taro, { getCurrentInstance, useDidShow } from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
 import AppButton from '../../components/AppButton'
+import EmptyState from '../../components/EmptyState'
 import FormSection from '../../components/FormSection'
 import Icon from '../../components/Icon'
 import ImageUploader from '../../components/ImageUploader'
@@ -9,6 +10,7 @@ import TabNav from '../../components/TabNav'
 import { campusConfig, normalizeLegacyLocation } from '../../config/campus'
 import { categories } from '../../data/mock'
 import { getDataMode, isH5CloudFallback } from '../../services/mode'
+import { ensureUserSession } from '../../services/auth'
 import { createProduct, getProduct, updateProduct } from '../../services/products'
 import { readLocal, writeLocal } from '../../services/storage'
 import { discardUploadedImages, uploadImage } from '../../services/upload'
@@ -30,6 +32,8 @@ export default function PublishPage() {
   const [campus, setCampus] = useState(normalizeLegacyLocation(draft?.campus))
   const [images, setImages] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [editLoading, setEditLoading] = useState(Boolean(editId))
+  const [editError, setEditError] = useState('')
   const [uploadProgress, setUploadProgress] = useState('')
   const busyRef = useRef(false)
   const completedRef = useRef(false)
@@ -37,15 +41,22 @@ export default function PublishPage() {
   useEffect(() => {
     if (!editId && !submitting && !completedRef.current) writeLocal(DRAFT_KEY, { title, description, price, originalPrice, category, condition, campus })
   }, [editId, submitting, title, description, price, originalPrice, category, condition, campus])
-  useDidShow(() => {
+  const loadEdit = async () => {
     if (!editId) return
-    getProduct(editId).then(product => {
-      if (!product) return Taro.showToast({ title: '商品不存在', icon: 'none' })
+    setEditLoading(true)
+    setEditError('')
+    try {
+      const [product, session] = await Promise.all([getProduct(editId), getDataMode() === 'api' ? Promise.resolve(null) : ensureUserSession()])
+      if (!product) { setEditError('商品不存在或已被删除'); return }
+      if (session && product.seller.id !== session.user.id) { setEditError('只能编辑自己发布的商品'); return }
+      if (product.status === 'sold') { setEditError('已售商品不能再编辑'); return }
       setTitle(product.title); setDescription(product.description); setPrice(String(product.price))
       setOriginalPrice(product.originalPrice ? String(product.originalPrice) : '')
       setCategory(product.category); setCondition(product.condition); setCampus(product.campus); setImages(product.images)
-    }).catch(error => Taro.showToast({ title: error.message, icon: 'none' }))
-  })
+    } catch { setEditError('商品暂时无法加载，请检查网络后重试') }
+    finally { setEditLoading(false) }
+  }
+  useDidShow(() => { void loadEdit() })
 
   const chooseImages = async () => {
     try {
@@ -57,7 +68,7 @@ export default function PublishPage() {
   }
 
   const submit = async () => {
-    if (busyRef.current) return
+    if (busyRef.current || (editId && (editLoading || editError))) return
     if (title.trim().length < 2) return Taro.showToast({ title: '商品名称至少写 2 个字', icon: 'none' })
     if (description.trim().length < 5) return Taro.showToast({ title: '商品描述至少写 5 个字', icon: 'none' })
     if (!Number.isFinite(Number(price)) || Number(price) <= 0 || Number(price) > 100000 || Math.abs(Number(price) * 100 - Math.round(Number(price) * 100)) > 0.00001) return Taro.showToast({ title: '价格需大于 0，最多两位小数', icon: 'none' })
@@ -88,6 +99,9 @@ export default function PublishPage() {
       Taro.showToast({ title: (error as Error).message || '保存失败，请稍后重试', icon: 'none' })
     } finally { busyRef.current = false; setSubmitting(false); setUploadProgress('') }
   }
+
+  if (editId && editLoading) return <View className='page'><View className='content-pad'><Text className='form-hint'>正在加载商品…</Text></View></View>
+  if (editId && editError) return <View className='page'><EmptyState kind='error' title='暂时无法编辑商品' description={editError} action='返回我的发布' onAction={() => Taro.redirectTo({ url: '/pages/my-listings/index' })} /></View>
 
   return <View className='page page--with-nav'>
     <View className='page-heading page-heading--publish'><Text className='page-heading__eyebrow'>SHARE YOUR FIND</Text><Text className='page-heading__title'>{editId ? '编辑这件好物' : '发布一件闲置'}</Text><Text className='page-heading__desc'>拍张照、写几句，让好东西继续流动。</Text></View>

@@ -35,7 +35,7 @@
 | `status` | string | `selling`、`sold`、`offline` |
 | `createdAt`, `updatedAt` | number | 创建和最近修改时间 |
 
-列表只显示本校 `selling` 商品；下架商品仅卖家可在“我的发布”访问。更新状态、编辑和删除均先校验 `sellerId`。创建限制为每个微信身份每天最多 20 件。删除会清理相关收藏与不再被引用的商品图；若云存储删除失败，写入 `reports` 待处理。
+公共列表只显示本校 `selling` 商品；卖家的“我的发布”展示自己的全部状态。状态流转固定为 `selling → sold/offline`、`offline → selling`；`sold` 为终态，只能删除。编辑仅允许 `selling/offline`。更新状态、编辑和删除均先校验 `sellerId`。旧商品缺少 `status` 或使用 `active` 时，个人列表按在售显示，状态操作按在售处理；缺少 `location`、`createdAt` 时前端使用安全的展示回退，无需清空现有商品。创建限制为每个微信身份每天最多 20 件。删除会清理相关收藏与不再被引用的商品图，但保留聊天会话和消息；若云存储删除失败，写入 `reports` 待处理。
 
 ## favorites
 
@@ -95,7 +95,7 @@
 | `products` | `school` 升序、`status` 升序、`createdAt` 降序 | 首页、最新排序 |
 | `products` | `school` 升序、`status` 升序、`category` 升序、`createdAt` 降序 | 分类最新 |
 | `products` | `school` 升序、`status` 升序、`price` 升序 | 低价/高价排序；高价若控制台提示另建降序索引 |
-| `products` | `sellerId` 升序、`school` 升序、`createdAt` 降序 | 我的发布 |
+| `products` | `sellerId` 升序 | 我的发布；按可信 OPENID 分批读取后排序，兼容缺少较新字段的旧商品 |
 | `favorites` | `userId` 升序、`createdAt` 降序 | 我的收藏 |
 | `favorites` | `productId` 升序 | 删除商品时清理收藏 |
 | `reports` | `type` 升序、`reporterId` 升序、`productId` 升序、`status` 升序 | 防重复举报 |
@@ -107,7 +107,7 @@
 
 `conversations._id` 已编码买家和商品，唯一性由数据库默认 `_id` 索引保证，无需另建“买家 + 商品”唯一索引。实际控制台如对某个组合查询提示缺索引，按提示补建，并记录在本表。聊天未读总数分批读取双方会话计数，最多扫描每侧 1000 条；运营规模超过此上限前需改为专用聚合统计。
 
-关键词搜索目前对标题和描述做转义后的正则匹配；数据量增加后需引入专用全文索引或搜索服务。商品列表上限 50 件、我的发布 100 件、收藏展示 50 件；大规模运营前需分页。
+关键词搜索目前对标题和描述做转义后的正则匹配；数据量增加后需引入专用全文索引或搜索服务。商品公共列表上限 50 件、收藏展示 50 件；我的发布按 100 件一批读取当前用户商品。公共列表在大规模运营前需分页。
 
 ## 云存储
 

@@ -22,12 +22,18 @@ interface CloudProduct {
   category: Product['category']
   condition: string
   images: string[]
-  location: string
-  status: ProductStatus
-  createdAt: number
+  location?: string
+  status?: ProductStatus | 'active'
+  createdAt?: number | string
+  updatedAt?: number | string
+}
+
+function productStatus(status: CloudProduct['status']): ProductStatus {
+  return status === 'sold' || status === 'offline' ? status : 'selling'
 }
 
 function fromCloud(item: CloudProduct): Product {
+  const timestamp = new Date(item.createdAt ?? item.updatedAt ?? '').getTime()
   return {
     id: item._id,
     title: item.title,
@@ -36,10 +42,10 @@ function fromCloud(item: CloudProduct): Product {
     originalPrice: item.originalPrice ?? undefined,
     category: item.category,
     condition: item.condition,
-    images: item.images || [],
-    campus: item.location,
-    status: item.status,
-    createdAt: new Date(item.createdAt).toISOString(),
+    images: Array.isArray(item.images) ? item.images : [],
+    campus: normalizeLegacyLocation(item.location),
+    status: productStatus(item.status),
+    createdAt: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : '',
     seller: item.seller || { id: item.sellerId, nickname: '校园同学', campus: campusConfig.campusName, school: campusConfig.schoolName, avatar: '同' },
     coverEmoji: '🎁',
     coverColor: '#e8efe9'
@@ -110,6 +116,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
   if (getDataMode() === 'cloud') return fromCloud(await cloudCall<CloudProduct>('updateProduct', { id, product: { ...input, location: input.campus } }))
   if (getDataMode() === 'api') return apiRequest<Product>(`/products/${encodeURIComponent(id)}`, 'PATCH', input)
   const previous = ownedLocalProduct(id)
+  if (previous.status === 'sold') throw new Error('已售商品不能再编辑')
   const updated = localProducts().map(item => item.id === id ? { ...item, ...input } : item)
   writeLocal(PRODUCTS_KEY, updated)
   await Promise.all(previous.images.filter(image => !input.images.includes(image)).map(removeMockImage))
@@ -125,7 +132,9 @@ export async function getMyProducts(): Promise<Product[]> {
 export async function setProductStatus(id: string, status: ProductStatus): Promise<void> {
   if (getDataMode() === 'cloud') { await cloudCall('setProductStatus', { id, status }); return }
   if (getDataMode() === 'api') { await apiRequest(`/products/${encodeURIComponent(id)}`, 'PATCH', { status }); return }
-  ownedLocalProduct(id)
+  const previous = ownedLocalProduct(id)
+  const allowed = previous.status === 'selling' ? ['sold', 'offline'] : previous.status === 'offline' ? ['selling'] : []
+  if (!allowed.includes(status)) throw new Error('当前商品状态不支持此操作')
   writeLocal(PRODUCTS_KEY, localProducts().map(product => product.id === id ? { ...product, status } : product))
 }
 

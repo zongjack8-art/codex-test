@@ -4,8 +4,8 @@ const { randomUUID } = require('node:crypto')
 const campus = require('./campus.json')
 const { createChatHandler } = require('./chat')
 const {
-  AppError, CATEGORIES, STATUSES, MAX_IMAGE_BYTES, fail, cleanText, safeId,
-  ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, escapeRegExp
+  AppError, CATEGORIES, MAX_IMAGE_BYTES, fail, cleanText, safeId,
+  ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, productStatus, assertStatusTransition, escapeRegExp
 } = require('./security')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
@@ -89,16 +89,19 @@ async function cleanFiles(fileIDs, productId) {
   catch (error) { await recordCleanupFailure(fileIDs, productId, error) }
 }
 async function cleanProductFiles(fileIDs, openid, productId) {
-  if (!fileIDs.length) return
+  // Legacy records may contain external or another user's image IDs.
+  // Never delete a file outside this seller's verified product directory.
+  const safeFileIDs = fileIDs.filter(fileID => ownImage(fileID, openid, 'product'))
+  if (!safeFileIDs.length) return
   const owned = products.where({ sellerId: openid })
   const count = await owned.count()
   if (count.total > 100) {
-    await recordCleanupFailure(fileIDs, productId, new Error('商品数量超过安全清理查询上限'))
+    await recordCleanupFailure(safeFileIDs, productId, new Error('商品数量超过安全清理查询上限'))
     return
   }
   const remaining = (await products.where({ sellerId: openid }).limit(100).get()).data
   const referenced = new Set(remaining.flatMap(item => item.images || []))
-  await cleanFiles(fileIDs.filter(fileID => !referenced.has(fileID)), productId)
+  await cleanFiles(safeFileIDs.filter(fileID => !referenced.has(fileID)), productId)
 }
 
 async function run(action, event) {
@@ -116,7 +119,7 @@ async function run(action, event) {
   }
   if (action === 'getProduct') {
     const item = await one(products, safeId(event.id))
-    if (!item || item.school !== campus.schoolName || (item.status === 'offline' && item.sellerId !== cloud.getWXContext().OPENID)) return null
+    if (!item || (item.school && item.school !== campus.schoolName) || (item.status === 'offline' && item.sellerId !== cloud.getWXContext().OPENID)) return null
     return (await hydrate([item]))[0]
   }
 
@@ -227,20 +230,29 @@ async function run(action, event) {
     return (await hydrate([await one(products, added._id)]))[0]
   }
   if (action === 'getMyProducts') {
-    const result = await products.where({ sellerId: openid, school: campus.schoolName }).orderBy('createdAt', 'desc').limit(100).get()
-    return hydrate(result.data)
+    // Only the trusted OPENID selects products. Avoid filtering on newer fields
+    // so older listings remain manageable without clearing the collection.
+    const items = []
+    for (let offset = 0; ; offset += 100) {
+      const batch = (await products.where({ sellerId: openid }).skip(offset).limit(100).get()).data
+      items.push(...batch)
+      if (batch.length < 100) break
+    }
+    items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    return hydrate(items)
   }
   if (action === 'updateProduct') {
     const old = await ownedProduct(event.id, openid)
+    if (productStatus(old.status) === 'sold') fail('INVALID_STATE', '已售商品不能再编辑')
     const data = validateProduct(event.product, openid)
     await verifyStoredImages(data.images)
     await products.doc(old._id).update({ data: { ...data, updatedAt: Date.now() } })
-    await cleanProductFiles(old.images.filter(fileID => !data.images.includes(fileID)), openid, old._id)
+    await cleanProductFiles((old.images || []).filter(fileID => !data.images.includes(fileID)), openid, old._id)
     return (await hydrate([await one(products, old._id)]))[0]
   }
   if (action === 'setProductStatus') {
     const old = await ownedProduct(event.id, openid)
-    if (!STATUSES.has(event.status)) fail('INVALID_INPUT', '商品状态无效')
+    assertStatusTransition(old.status, event.status)
     await products.doc(old._id).update({ data: { status: event.status, updatedAt: Date.now() } })
     return { status: event.status }
   }
@@ -248,7 +260,7 @@ async function run(action, event) {
     const old = await ownedProduct(event.id, openid)
     await products.doc(old._id).remove()
     await favorites.where({ productId: old._id }).remove()
-    await cleanProductFiles(old.images.filter(fileID => ownImage(fileID, openid, 'product')), openid, old._id)
+    await cleanProductFiles((old.images || []).filter(fileID => ownImage(fileID, openid, 'product')), openid, old._id)
     return { deleted: true }
   }
   if (action === 'getFavoriteIds' || action === 'getFavorites') {

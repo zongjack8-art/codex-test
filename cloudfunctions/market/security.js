@@ -7,6 +7,7 @@ class AppError extends Error {
 
 const CATEGORIES = new Set(['books', 'digital', 'daily', 'sports', 'fashion', 'other'])
 const STATUSES = new Set(['selling', 'sold', 'offline'])
+const STATUS_TRANSITIONS = { selling: new Set(['sold', 'offline']), offline: new Set(['selling']), sold: new Set() }
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const REPORT_REASONS = new Set(['prohibited', 'misleading', 'fraud', 'other'])
 
@@ -96,4 +97,11 @@ function assertOwner(product, openid) {
   if (!product || product.sellerId !== openid) fail('FORBIDDEN', '只能操作自己发布的商品')
 }
 
-module.exports = { AppError, CATEGORIES, STATUSES, REPORT_REASONS, MAX_IMAGE_BYTES, fail, cleanText, safeId, cloudPath, ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, escapeRegExp }
+// Earlier products may not have a status, or may use the old "active" name.
+function productStatus(value) { return value === 'active' || !value ? 'selling' : value }
+function assertStatusTransition(current, next) {
+  if (!STATUSES.has(next)) fail('INVALID_INPUT', '商品状态无效')
+  if (!STATUS_TRANSITIONS[productStatus(current)]?.has(next)) fail('INVALID_STATE', '当前商品状态不支持此操作')
+}
+
+module.exports = { AppError, CATEGORIES, STATUSES, REPORT_REASONS, MAX_IMAGE_BYTES, fail, cleanText, safeId, cloudPath, ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, productStatus, assertStatusTransition, escapeRegExp }

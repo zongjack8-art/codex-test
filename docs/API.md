@@ -26,13 +26,15 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 | `GET /products` | 查询在售商品 | 可选 `keyword`、`category`、`sort=newest/priceAsc/priceDesc`；返回 `Product[]` |
 | `GET /products/:id` | 商品详情 | 返回 `Product`，不存在返回 404 |
 | `POST /products` | 发布商品 | 请求 `ProductInput`；返回新建 `Product` |
-| `GET /me/products` | 我的发布 | 返回当前用户 `Product[]`，包括已售出 |
-| `PATCH /products/:id` | 编辑商品或更新状态 | 状态为 `selling`、`sold` 或 `offline`；只允许卖家操作 |
-| `DELETE /products/:id` | 删除商品 | 只允许卖家操作；成功返回 `{ "data": null }` |
+| `GET /me/products` | 我的发布 | 返回当前用户全部状态的 `Product[]` |
+| `PATCH /products/:id` | 编辑商品或更新状态 | 只允许卖家操作；在售可售出或下架，下架可重新上架，已售不可编辑或改状态 |
+| `DELETE /products/:id` | 删除商品 | 只允许卖家操作；保留已有聊天记录，成功返回 `{ "data": null }` |
 
 用户资料接口：`GET /me` 返回当前用户；`PATCH /me` 接收昵称、头像、常用校内范围和简介并返回更新后的用户。学校由服务端固定为天津师范大学，不能由客户端修改。HTTP 服务端必须自行验证 Bearer 令牌及资源所有权。
 
 `Product` 字段见 `src/types/market.ts`。当前 CloudBase 实现用人民币元和最多两位小数，图片保存为 `cloud://` 文件 ID；本页所述可选 HTTP 后端可自行改用整数分和 HTTPS 图片地址，但须在 Service 边界转换。商品图片最多 3 张。服务端必须重新验证标题、描述、价格、图片、分类和面交范围。
+
+当前 Cloud 模式通过 `market` 的 `getMyProducts`、`updateProduct`、`setProductStatus`、`deleteProduct` 实现商品管理。身份从 `getWXContext().OPENID` 取得，写操作先读取数据库商品并核对 `sellerId`；客户端传入的卖家、学校和状态等附加字段不会改变商品归属。
 
 ## 收藏
 
