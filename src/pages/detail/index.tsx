@@ -14,6 +14,7 @@ import { submitReport, type ReportReason } from '../../services/reports'
 import { createOrder } from '../../services/orders'
 import type { Product } from '../../types/market'
 import { formatDetailTime } from '../../utils/format'
+import { retainRouteId } from '../../utils/routeId'
 import { detailPermissions } from './permissions'
 
 const reportReasons: { value: ReportReason; label: string }[] = [
@@ -24,7 +25,8 @@ const reportReasons: { value: ReportReason; label: string }[] = [
 ]
 
 export default function DetailPage() {
-  const id = getCurrentInstance().router?.params?.id || ''
+  const productIdRef = useRef('')
+  retainRouteId(productIdRef, getCurrentInstance().router?.params?.id)
   const [product, setProduct] = useState<Product | null>(null)
   const [favorite, setFavorite] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -42,9 +44,11 @@ export default function DetailPage() {
   const reportBusyRef = useRef(false)
   const orderBusyRef = useRef(false)
   const load = () => {
+    const id = retainRouteId(productIdRef, getCurrentInstance().router?.params?.id)
     setLoading(true)
     setLoadError('')
     setFavorite(false)
+    if (!id) { setProduct(null); setLoadError('商品链接缺少编号'); setLoading(false); return }
     getProduct(id).then(item => {
       setProduct(item)
       if (item && detailPermissions(item).canFavorite) getFavoriteIds().then(ids => setFavorite(ids.includes(id))).catch(() => undefined)
@@ -53,7 +57,8 @@ export default function DetailPage() {
   useDidShow(load)
 
   const onFavorite = async () => {
-    if (favoriteBusyRef.current || !product || !detailPermissions(product).canFavorite) return
+    const id = productIdRef.current
+    if (!id || favoriteBusyRef.current || !product || !detailPermissions(product).canFavorite) return
     favoriteBusyRef.current = true
     setFavoriteBusy(true)
     try {

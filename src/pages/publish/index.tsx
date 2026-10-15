@@ -15,13 +15,15 @@ import { createProduct, getProduct, updateProduct } from '../../services/product
 import { readLocal, writeLocal } from '../../services/storage'
 import { discardUploadedImages, uploadImage } from '../../services/upload'
 import type { CategoryId } from '../../types/market'
+import { retainRouteId } from '../../utils/routeId'
 
 const conditions = ['全新未拆', '九成新', '八成新', '七成新及以下']
 const DRAFT_KEY = 'campusmarket.publish-draft.v1'
 interface Draft { title: string; description: string; price: string; originalPrice: string; category: CategoryId; condition: string; campus: string }
 
 export default function PublishPage() {
-  const editId = getCurrentInstance().router?.params?.id
+  const editIdRef = useRef('')
+  const editId = retainRouteId(editIdRef, getCurrentInstance().router?.params?.id)
   const [draft] = useState(() => editId ? null : readLocal<Draft | null>(DRAFT_KEY, null))
   const [title, setTitle] = useState(draft?.title || '')
   const [description, setDescription] = useState(draft?.description || '')
@@ -42,11 +44,12 @@ export default function PublishPage() {
     if (!editId && !submitting && !completedRef.current) writeLocal(DRAFT_KEY, { title, description, price, originalPrice, category, condition, campus })
   }, [editId, submitting, title, description, price, originalPrice, category, condition, campus])
   const loadEdit = async () => {
-    if (!editId) return
+    const id = retainRouteId(editIdRef, getCurrentInstance().router?.params?.id)
+    if (!id) return
     setEditLoading(true)
     setEditError('')
     try {
-      const [product, session] = await Promise.all([getProduct(editId), getDataMode() === 'api' ? Promise.resolve(null) : ensureUserSession()])
+      const [product, session] = await Promise.all([getProduct(id), getDataMode() === 'api' ? Promise.resolve(null) : ensureUserSession()])
       if (!product) { setEditError('商品不存在或已被删除'); return }
       if (session && product.seller.id !== session.user.id) { setEditError('只能编辑自己发布的商品'); return }
       if (product.status === 'sold') { setEditError('已售商品不能再编辑'); return }

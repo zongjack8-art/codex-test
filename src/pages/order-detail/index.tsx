@@ -8,21 +8,29 @@ import ProductPhoto from '../../components/ProductPhoto'
 import { changeOrder, getOrder } from '../../services/orders'
 import type { MarketOrder } from '../../types/market'
 import { formatOrderTime, orderActions, orderStatusLabels } from '../../utils/orders'
+import { retainRouteId } from '../../utils/routeId'
 
 type Action = 'confirmOrder' | 'completeOrder' | 'cancelOrder'
 
 export default function OrderDetailPage() {
-  const id = getCurrentInstance().router?.params?.id || ''
+  const orderIdRef = useRef('')
+  retainRouteId(orderIdRef, getCurrentInstance().router?.params?.id)
   const [order, setOrder] = useState<MarketOrder | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
-  const load = () => { setLoading(true); setError(false); getOrder(id).then(setOrder).catch(() => setError(true)).finally(() => setLoading(false)) }
+  const load = () => {
+    const id = retainRouteId(orderIdRef, getCurrentInstance().router?.params?.id)
+    setLoading(true); setError(false)
+    if (!id) { setOrder(null); setError(true); setLoading(false); return }
+    getOrder(id).then(setOrder).catch(() => setError(true)).finally(() => setLoading(false))
+  }
   useDidShow(load)
 
   const act = async (action: Action) => {
-    if (!order || !orderActions(order).includes(action) || busyRef.current) return
+    const id = orderIdRef.current
+    if (!id || !order || !orderActions(order).includes(action) || busyRef.current) return
     busyRef.current = true
     setBusy(true)
     try {

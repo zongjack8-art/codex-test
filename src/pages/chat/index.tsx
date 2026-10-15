@@ -7,6 +7,7 @@ import EmptyState from '../../components/EmptyState'
 import ProductPhoto from '../../components/ProductPhoto'
 import { currentChatUserId, getConversation, listMessages, markConversationRead, sendMessage } from '../../services/chat'
 import type { ChatConversation, ChatMessage } from '../../types/market'
+import { retainRouteId } from '../../utils/routeId'
 
 function clock(value: number): string {
   const date = new Date(value)
@@ -14,7 +15,8 @@ function clock(value: number): string {
 }
 
 export default function ChatPage() {
-  const id = getCurrentInstance().router?.params?.id || ''
+  const conversationIdRef = useRef('')
+  retainRouteId(conversationIdRef, getCurrentInstance().router?.params?.id)
   const [conversation, setConversation] = useState<ChatConversation | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [myId, setMyId] = useState('')
@@ -32,6 +34,8 @@ export default function ChatPage() {
     loadingRef.current = true
     if (!silent) { setLoading(true); setError(false) }
     try {
+      const id = retainRouteId(conversationIdRef, getCurrentInstance().router?.params?.id)
+      if (!id) throw new Error('会话链接缺少编号')
       const [userId, item, rows] = await Promise.all([currentChatUserId(), getConversation(id), listMessages(id)])
       setMyId(userId); setConversation(item); setMessages(rows)
       if (item.unreadCount) await markConversationRead(id)
@@ -41,14 +45,15 @@ export default function ChatPage() {
   useDidShow(() => {
     void refresh()
     if (polling.current) clearInterval(polling.current)
-    polling.current = setInterval(() => { if (!sendingRef.current) void refresh(true) }, 15000)
+    if (conversationIdRef.current) polling.current = setInterval(() => { if (!sendingRef.current) void refresh(true) }, 15000)
   })
   useDidHide(() => { if (polling.current) clearInterval(polling.current); polling.current = null })
   useEffect(() => () => { if (polling.current) clearInterval(polling.current) }, [])
 
   const send = async () => {
+    const id = conversationIdRef.current
     const content = text.trim()
-    if (sendingRef.current || !content) return
+    if (!id || sendingRef.current || !content) return
     if (content.length > 500) return Taro.showToast({ title: '消息不能超过 500 字', icon: 'none' })
     sendingRef.current = true; setSending(true); setSendError(false)
     try {
