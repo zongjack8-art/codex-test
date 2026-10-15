@@ -2,6 +2,8 @@ import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { getUnreadMessageCount } from '../services/chat'
+import { getOrderUnreadSummary } from '../services/orders'
+import { unreadCountLabel } from '../utils/orders'
 import Icon, { type IconName } from './Icon'
 
 const tabs: { page: string; label: string; icon: IconName; url: string }[] = [
@@ -12,10 +14,15 @@ const tabs: { page: string; label: string; icon: IconName; url: string }[] = [
   { page: 'profile', label: '我的', icon: 'user', url: '/pages/profile/index' }
 ]
 
-export default function TabNav({ active, unreadCount }: { active: string; unreadCount?: number }) {
+export default function TabNav({ active, unreadCount, orderUnreadCount }: { active: string; unreadCount?: number; orderUnreadCount?: number }) {
   const [keyboardOpen, setKeyboardOpen] = useState(false)
   const [loadedUnread, setLoadedUnread] = useState(0)
+  const [loadedOrderUnread, setLoadedOrderUnread] = useState(0)
   useEffect(() => { getUnreadMessageCount().then(setLoadedUnread).catch(() => setLoadedUnread(0)) }, [active])
+  useEffect(() => {
+    if (orderUnreadCount !== undefined) return
+    getOrderUnreadSummary().then(summary => setLoadedOrderUnread(summary.total)).catch(() => setLoadedOrderUnread(0))
+  }, [active, orderUnreadCount])
   useEffect(() => {
     if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP) return
     const onHeight = (event: { height: number }) => setKeyboardOpen(event.height > 0)
@@ -23,9 +30,10 @@ export default function TabNav({ active, unreadCount }: { active: string; unread
     return () => Taro.offKeyboardHeightChange(onHeight)
   }, [])
   if (keyboardOpen) return null
+  const profileUnread = orderUnreadCount ?? loadedOrderUnread
   return <View className='tab-nav'>
     {tabs.map(tab => <View key={tab.page} className={`tab-nav__item ${active === tab.page ? 'is-active' : ''} ${tab.page === 'publish' ? 'tab-nav__publish' : ''}`} onClick={() => active !== tab.page && Taro.reLaunch({ url: tab.url })}>
-      <View className='tab-nav__icon-wrap'><Icon name={tab.icon} size='md' />{tab.page === 'messages' && (unreadCount ?? loadedUnread) > 0 && <Text className='tab-nav__badge'>{(unreadCount ?? loadedUnread) > 99 ? '99+' : unreadCount ?? loadedUnread}</Text>}</View>
+      <View className='tab-nav__icon-wrap'><Icon name={tab.icon} size='md' />{tab.page === 'messages' && (unreadCount ?? loadedUnread) > 0 && <Text className='tab-nav__badge'>{(unreadCount ?? loadedUnread) > 99 ? '99+' : unreadCount ?? loadedUnread}</Text>}{tab.page === 'profile' && profileUnread > 0 && <Text className='tab-nav__badge'>{unreadCountLabel(profileUnread)}</Text>}</View>
       <Text className='tab-nav__label'>{tab.label}</Text>
     </View>)}
   </View>

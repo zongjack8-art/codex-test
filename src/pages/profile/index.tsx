@@ -62,6 +62,6 @@ export default function ProfilePage() {
       <View className='menu-card'>{menu.map(item => <View key={item.label} className='menu-card__item' onClick={item.action}><View className='menu-card__icon'><Icon name={item.icon} size='md' /></View><Text>{item.label}</Text>{item.label === '我的订单' && orderUnread > 0 && <Badge tone='danger' className='menu-card__unread'>{unreadCountLabel(orderUnread)}</Badge>}<Icon name='chevron' size='sm' className='menu-card__arrow' /></View>)}</View>
       <View className='profile-note'><Icon name='shield' size='md' /><View><Text>校园面交，放心一点</Text><Text>见面验货、确认状态，再完成交易</Text></View></View>
       {getDataMode() !== 'cloud' && <AppButton variant='ghost' block onClick={session ? () => { signOut(); setSession(null); setProfile(demoUser); Taro.showToast({ title: '已退出演示身份', icon: 'none' }) } : login}>{session ? '退出当前身份' : (getDataMode() === 'api' ? '微信登录' : '进入演示身份')}</AppButton>}
-    </View><TabNav active='profile' />
+    </View><TabNav active='profile' orderUnreadCount={orderUnread} />
   </View>
 }

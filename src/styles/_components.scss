@@ -20,7 +20,7 @@
 .badge--neutral { background: t.$background; color: t.$text-secondary; }
 .badge--success { background: t.$success-light; color: t.$success; }
 .badge--warning { background: t.$warning-light; color: t.$warning; }
-.badge--danger { background: t.$danger-light; color: t.$danger; }
+.badge--danger { background: t.$notification; color: t.$surface; }
 .badge--accent { background: t.$accent-light; color: t.$accent; }
 
 .search-bar { display: flex; align-items: center; min-height: 82px; padding: 0 19px; border: 1px solid t.$border; border-radius: t.$radius-pill; background: t.$surface; box-shadow: t.$shadow-card; }
@@ -39,7 +39,7 @@
 .tab-nav__item.is-active .tab-nav__icon-wrap { background: t.$primary-light; }
 .tab-nav__publish .tab-nav__icon-wrap { width: 66px; height: 66px; margin-top: -20px; border: 2px solid t.$primary; border-radius: 22px; background: t.$surface; box-shadow: t.$shadow-floating; }
 .tab-nav__publish .tab-nav__label { margin-top: 7px; color: t.$primary-dark; font-weight: 800; }
-.tab-nav__badge { position: absolute; top: -4px; right: -12px; display: flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; padding: 0 5px; border-radius: t.$radius-pill; background: t.$danger; color: t.$surface; font-size: 17px; font-weight: 800; line-height: 1; }
+.tab-nav__badge { position: absolute; top: -12px; right: -18px; display: flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; padding: 0 5px; border: 2px solid t.$surface; border-radius: t.$radius-pill; background: t.$notification; color: t.$surface; font-size: 17px; font-weight: 800; line-height: 1; }
 .tab-nav__icon-wrap { position: relative; }
 
 .section-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 38px 0 22px; }
