@@ -4,6 +4,8 @@ export const orderStatusLabels: Record<OrderStatus, string> = {
   pending: '待卖家确认', confirmed: '待面交', completed: '已完成', cancelled: '已取消'
 }
 
+export const unreadCountLabel = (count: number): string => count > 99 ? '99+' : String(count)
+
 export function orderActions(order: Pick<MarketOrder, 'role' | 'status'>): ('confirmOrder' | 'completeOrder' | 'cancelOrder')[] {
   if (order.status === 'pending') return order.role === 'seller' ? ['confirmOrder', 'cancelOrder'] : ['cancelOrder']
   if (order.status === 'confirmed') return order.role === 'seller' ? ['completeOrder', 'cancelOrder'] : ['cancelOrder']

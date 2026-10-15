@@ -23,10 +23,25 @@ function createOrderHandler({ db, users, products, orders, ensureUser }) {
       status: order.status, createdAt: order.createdAt, updatedAt: order.updatedAt,
       completedAt: order.completedAt || null, cancelledAt: order.cancelledAt || null,
       role: order.buyerId === openid ? 'buyer' : 'seller',
+      unread: order.buyerId === openid ? order.buyerUnread === true : order.sellerUnread === true,
       other: { nickname: person?.nickname || '校园同学', avatar: person?.avatar || '同' }
     }
   }
   const document = async (tx, collection, id) => (await tx.collection(collection).doc(id).get()).data || null
+  const roleFields = role => {
+    if (role !== 'buyer' && role !== 'seller') fail('INVALID_INPUT', '订单列表类型无效')
+    return role === 'buyer' ? ['buyerId', 'buyerUnread'] : ['sellerId', 'sellerUnread']
+  }
+  // Use the existing role + createdAt indexes. Missing flags on older orders are read as false.
+  async function eachRoleOrder(role, openid, visit) {
+    const [idField] = roleFields(role)
+    const pageSize = 100
+    for (let offset = 0; ; offset += pageSize) {
+      const rows = (await orders.where({ [idField]: openid }).orderBy('createdAt', 'desc').skip(offset).limit(pageSize).get()).data
+      for (const row of rows) await visit(row)
+      if (rows.length < pageSize) break
+    }
+  }
 
   return async function orderAction(action, event, openid) {
     if (action === 'createOrder') {
@@ -49,7 +64,7 @@ function createOrderHandler({ db, users, products, orders, ensureUser }) {
             _id: id, productId, buyerId: openid, sellerId: live.sellerId,
             productTitle: live.title, productImage: live.images?.[0] || '', amount: live.price,
             activeKey: key, status: 'pending', createdAt: now, updatedAt: now,
-            completedAt: null, cancelledAt: null
+            completedAt: null, cancelledAt: null, buyerUnread: false, sellerUnread: true
           } })
         })
       } catch (error) {
@@ -61,10 +76,28 @@ function createOrderHandler({ db, users, products, orders, ensureUser }) {
       return present(await one(orders, id), openid)
     }
     if (action === 'listOrders') {
-      if (event.role !== 'buyer' && event.role !== 'seller') fail('INVALID_INPUT', '订单列表类型无效')
-      const field = event.role === 'buyer' ? 'buyerId' : 'sellerId'
+      const [field] = roleFields(event.role)
       const result = await orders.where({ [field]: openid }).orderBy('createdAt', 'desc').limit(100).get()
       return Promise.all(result.data.map(item => present(item, openid)))
+    }
+    if (action === 'getOrderUnreadSummary') {
+      const summary = { buyer: 0, seller: 0, total: 0 }
+      for (const role of ['buyer', 'seller']) {
+        const [, unreadField] = roleFields(role)
+        await eachRoleOrder(role, openid, row => { if (row[unreadField] === true) summary[role]++ })
+      }
+      summary.total = summary.buyer + summary.seller
+      return summary
+    }
+    if (action === 'markOrdersRead') {
+      const [, unreadField] = roleFields(event.role)
+      let cleared = 0
+      await eachRoleOrder(event.role, openid, async row => {
+        if (row[unreadField] !== true) return
+        await orders.doc(row._id).update({ data: { [unreadField]: false } })
+        cleared++
+      })
+      return { cleared }
     }
     if (action === 'getOrder') return present(await currentOrder(event.id, openid), openid)
     if (['confirmOrder', 'completeOrder', 'cancelOrder'].includes(action)) {
@@ -78,7 +111,10 @@ function createOrderHandler({ db, users, products, orders, ensureUser }) {
         const now = Date.now()
         if (action === 'cancelOrder') {
           if (!activeStatuses.includes(order.status)) fail('INVALID_STATE', '当前订单不能取消')
-          await tx.collection('orders').doc(id).update({ data: { status: 'cancelled', activeKey: `closed_${id}`, cancelledAt: now, updatedAt: now } })
+          await tx.collection('orders').doc(id).update({ data: {
+            status: 'cancelled', activeKey: `closed_${id}`, cancelledAt: now, updatedAt: now,
+            buyerUnread: order.sellerId === openid, sellerUnread: order.buyerId === openid
+          } })
           return
         }
         const expected = action === 'confirmOrder' ? 'pending' : 'confirmed'
@@ -86,10 +122,10 @@ function createOrderHandler({ db, users, products, orders, ensureUser }) {
         const product = await document(tx, 'products', order.productId)
         if (!product || product.sellerId !== order.sellerId || productStatus(product.status) !== 'selling') fail('INVALID_STATE', '商品已不在售，无法继续此订单')
         if (action === 'confirmOrder') {
-          await tx.collection('orders').doc(id).update({ data: { status: 'confirmed', updatedAt: now } })
+          await tx.collection('orders').doc(id).update({ data: { status: 'confirmed', buyerUnread: true, sellerUnread: false, updatedAt: now } })
         } else {
           await tx.collection('products').doc(order.productId).update({ data: { status: 'sold', updatedAt: now } })
-          await tx.collection('orders').doc(id).update({ data: { status: 'completed', activeKey: `closed_${id}`, completedAt: now, updatedAt: now } })
+          await tx.collection('orders').doc(id).update({ data: { status: 'completed', activeKey: `closed_${id}`, completedAt: now, buyerUnread: true, sellerUnread: false, updatedAt: now } })
         }
       })
       return present(await one(orders, id), openid)

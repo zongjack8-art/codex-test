@@ -99,8 +99,11 @@
 | `activeKey` | string | 活跃时为 SHA-256(buyerId:productId)，结束后改为 `closed_<orderId>`；唯一索引防并发重复下单 |
 | `createdAt`, `updatedAt` | number | Unix 毫秒时间戳 |
 | `completedAt`, `cancelledAt` | number / null | 完成和取消时间 |
+| `buyerUnread`, `sellerUnread` | boolean | 当前买家、卖家各自的站内订单未读状态；旧文档缺少字段时按 `false` 处理 |
 
 只允许买卖双方读取订单。卖家可确认 `pending → confirmed`，卖家可将 `confirmed → completed`，完成时在同一云数据库事务中把商品设为 `sold`。买卖双方可取消 `pending/confirmed → cancelled`；完成或取消后不可继续流转。取消后再次下单会创建新记录，历史订单仍保留。订单完成或商品删除均不清理聊天记录。订单不表示已付款或平台担保。
+
+新订单设 `buyerUnread=false`、`sellerUnread=true`；卖家确认或完成后设 `buyerUnread=true`、`sellerUnread=false`；取消时仅通知另一方。`getOrderUnreadSummary` 和 `markOrdersRead` 都以云函数取得的 OPENID 查询当前用户订单，按买家或卖家角色分别统计和清除。列表仅向前端返回当前角色的 `unread` 布尔值。未读查询沿用下方 `buyerId + createdAt` / `sellerId + createdAt` 索引，在云函数中分批筛选；本功能**无需新增索引或集合**。旧订单未读字段缺失不会产生历史红点。
 
 ## 索引
 

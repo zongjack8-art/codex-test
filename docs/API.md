@@ -64,7 +64,7 @@ HTTP 请求中的买家、卖家、发送者、收件人和未读数字段不能
 
 ## 订单
 
-Cloud 模式的订单调用 `market` action：`createOrder`、`listOrders`、`getOrder`、`confirmOrder`、`completeOrder`、`cancelOrder`。HTTP 适配层暂未实现，若后续接入，应提供 `POST /me/orders`、`GET /me/orders?role=buyer|seller`、`GET /me/orders/:id` 和订单确认、完成、取消的 POST 操作。创建请求只提交 `productId`；价格与买卖双方身份由服务端读取，订单状态流转由服务端验证。
+Cloud 模式的订单调用 `market` action：`createOrder`、`listOrders`、`getOrder`、`confirmOrder`、`completeOrder`、`cancelOrder`、`getOrderUnreadSummary`、`markOrdersRead`。后两者分别返回 `{ buyer, seller, total }`，以及根据 `{ role: 'buyer' | 'seller' }` 清除当前 OPENID 对应角色未读并返回 `{ cleared }`；订单列表只返回当前角色的 `unread`，缺失字段视为已读。HTTP 适配层暂未实现，若后续接入，应提供 `POST /me/orders`、`GET /me/orders?role=buyer|seller`、`GET /me/orders/:id`、`GET /me/orders/unread-summary`、`POST /me/orders/read` 和订单确认、完成、取消的 POST 操作。创建请求只提交 `productId`；价格、买卖双方身份和未读归属由服务端读取或计算，订单状态流转由服务端验证。
 
 ## 图片上传
 

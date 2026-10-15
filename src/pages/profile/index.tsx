@@ -1,6 +1,6 @@
 import { Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import AppButton from '../../components/AppButton'
 import Avatar from '../../components/Avatar'
 import { Badge } from '../../components/Badge'
@@ -10,8 +10,10 @@ import { campusConfig } from '../../config/campus'
 import { demoUser } from '../../data/mock'
 import { getCurrentUser, getSession, loginWithWechat, signOut } from '../../services/auth'
 import { getDataMode, isH5CloudFallback } from '../../services/mode'
+import { getOrderUnreadSummary } from '../../services/orders'
 import { getFavoriteIds, getMyProducts } from '../../services/products'
 import type { Session, UserProfile } from '../../types/market'
+import { unreadCountLabel } from '../../utils/orders'
 
 export default function ProfilePage() {
   const [session, setSession] = useState<Session | null>(null)
@@ -21,12 +23,16 @@ export default function ProfilePage() {
   const [listingCount, setListingCount] = useState(0)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [soldCount, setSoldCount] = useState(0)
+  const [orderUnread, setOrderUnread] = useState(0)
+  const unreadRequest = useRef(0)
   const loadProfile = () => {
     setProfileLoading(getDataMode() === 'cloud')
     setProfileError(false)
     getCurrentUser().then(user => { setProfile(user); setSession(getSession()) }).catch(() => setProfileError(true)).finally(() => setProfileLoading(false))
   }
   useDidShow(() => {
+    const request = ++unreadRequest.current
+    getOrderUnreadSummary().then(summary => { if (request === unreadRequest.current) setOrderUnread(summary.total) }).catch(() => { if (request === unreadRequest.current) setOrderUnread(0) })
     setSession(getSession())
     loadProfile()
     getMyProducts().then(items => { setListingCount(items.length); setSoldCount(items.filter(item => item.status === 'sold').length) }).catch(() => undefined)
@@ -53,7 +59,7 @@ export default function ProfilePage() {
       {isH5CloudFallback() && <Text className='mode-banner'>H5 当前使用本机演示数据。</Text>}
       {profileError && <View className='profile-connect-error'><Text>云端身份暂时不可用，请检查环境和 market 云函数后重试。</Text><AppButton variant='secondary' onClick={loadProfile}>重新连接</AppButton></View>}
       <View className='profile-section-heading'><Text>我的校园生活</Text><Text>管理好物，安心交易</Text></View>
-      <View className='menu-card'>{menu.map(item => <View key={item.label} className='menu-card__item' onClick={item.action}><View className='menu-card__icon'><Icon name={item.icon} size='md' /></View><Text>{item.label}</Text><Icon name='chevron' size='sm' className='menu-card__arrow' /></View>)}</View>
+      <View className='menu-card'>{menu.map(item => <View key={item.label} className='menu-card__item' onClick={item.action}><View className='menu-card__icon'><Icon name={item.icon} size='md' /></View><Text>{item.label}</Text>{item.label === '我的订单' && orderUnread > 0 && <Badge tone='danger' className='menu-card__unread'>{unreadCountLabel(orderUnread)}</Badge>}<Icon name='chevron' size='sm' className='menu-card__arrow' /></View>)}</View>
       <View className='profile-note'><Icon name='shield' size='md' /><View><Text>校园面交，放心一点</Text><Text>见面验货、确认状态，再完成交易</Text></View></View>
       {getDataMode() !== 'cloud' && <AppButton variant='ghost' block onClick={session ? () => { signOut(); setSession(null); setProfile(demoUser); Taro.showToast({ title: '已退出演示身份', icon: 'none' }) } : login}>{session ? '退出当前身份' : (getDataMode() === 'api' ? '微信登录' : '进入演示身份')}</AppButton>}
     </View><TabNav active='profile' />

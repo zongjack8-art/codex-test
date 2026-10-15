@@ -96,6 +96,12 @@ export interface ChatMessage {
 export type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
 export type OrderRole = 'buyer' | 'seller'
 
+export interface OrderUnreadSummary {
+  buyer: number
+  seller: number
+  total: number
+}
+
 export interface MarketOrder {
   id: string
   productId: string
@@ -105,6 +111,8 @@ export interface MarketOrder {
   productImage: string
   amount: number
   status: OrderStatus
+  /** Read state for the current user's role; absent on older HTTP implementations. */
+  unread?: boolean
   role: OrderRole
   other: Pick<Seller, 'nickname' | 'avatar'>
   createdAt: number

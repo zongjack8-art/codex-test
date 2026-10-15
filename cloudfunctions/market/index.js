@@ -20,7 +20,7 @@ const conversations = db.collection('conversations')
 const messages = db.collection('messages')
 const orders = db.collection('orders')
 const chatActions = new Set(['startConversation', 'listConversations', 'getConversation', 'listMessages', 'sendMessage', 'markConversationRead', 'getUnreadMessageCount'])
-const orderActions = new Set(['createOrder', 'listOrders', 'getOrder', 'confirmOrder', 'completeOrder', 'cancelOrder'])
+const orderActions = new Set(['createOrder', 'listOrders', 'getOrder', 'confirmOrder', 'completeOrder', 'cancelOrder', 'getOrderUnreadSummary', 'markOrdersRead'])
 
 function identity() {
   const openid = cloud.getWXContext().OPENID

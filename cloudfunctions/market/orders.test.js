@@ -30,14 +30,15 @@ function fixture() {
     if (!rows[name]) throw new Error(`Unknown collection ${name}`)
     return {
       where(query) {
-        let limit = Infinity; let sort = null
+        let limit = Infinity; let offset = 0; let sort = null
         const cursor = {
           limit(value) { limit = value; return cursor },
+          skip(value) { offset = value; return cursor },
           orderBy(field, direction) { sort = [field, direction]; return cursor },
           async get() {
             const found = rows[name].filter(row => matches(row, query))
             if (sort) found.sort((a, b) => directionValue(a[sort[0]], b[sort[0]], sort[1]))
-            return { data: found.slice(0, limit) }
+            return { data: found.slice(offset, offset + limit) }
           },
           async count() { return { total: rows[name].filter(row => matches(row, query)).length } }
         }
@@ -153,4 +154,92 @@ test('待面交时双方可取消；商品下架后不能确认订单', async ()
   fx.rows.products[0].status = 'offline'
   fx.setUser('seller')
   assert.equal((await fx.main({ action: 'confirmOrder', id: id2 })).error.code, 'INVALID_STATE')
+})
+
+test('新订单只提醒卖家，列表只返回当前角色未读，伪造身份字段无效', async () => {
+  const fx = fixture()
+  const created = await fx.main({ action: 'createOrder', productId: 'p1', buyerUnread: true, sellerUnread: false, buyerId: 'outsider' })
+  const id = created.data.id
+  assert.equal(fx.rows.orders[0].buyerUnread, false)
+  assert.equal(fx.rows.orders[0].sellerUnread, true)
+  assert.equal(created.data.unread, false)
+  assert.equal('buyerUnread' in created.data, false)
+  assert.equal('sellerUnread' in created.data, false)
+  assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 0, seller: 0, total: 0 })
+  fx.setUser('seller')
+  assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 0, seller: 1, total: 1 })
+  assert.equal((await fx.main({ action: 'listOrders', role: 'seller' })).data[0].unread, true)
+  assert.equal((await fx.main({ action: 'getOrder', id })).data.unread, true)
+  fx.setUser('outsider')
+  assert.equal((await fx.main({ action: 'getOrder', id })).error.code, 'FORBIDDEN')
+  assert.equal((await fx.main({ action: 'markOrdersRead', role: 'seller', sellerId: 'seller' })).data.cleared, 0)
+  assert.equal(fx.rows.orders[0].sellerUnread, true)
+})
+
+test('确认和完成分别提醒买家，已读只清当前角色，不清对方角色', async () => {
+  const fx = fixture()
+  const id = (await fx.main({ action: 'createOrder', productId: 'p1' })).data.id
+  fx.setUser('seller')
+  assert.equal((await fx.main({ action: 'confirmOrder', id })).ok, true)
+  assert.equal(fx.rows.orders[0].buyerUnread, true)
+  assert.equal(fx.rows.orders[0].sellerUnread, false)
+  fx.setUser('buyer')
+  assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 1, seller: 0, total: 1 })
+  assert.equal((await fx.main({ action: 'markOrdersRead', role: 'buyer', buyerId: 'seller' })).data.cleared, 1)
+  assert.equal(fx.rows.orders[0].buyerUnread, false)
+  fx.setUser('seller')
+  assert.equal((await fx.main({ action: 'completeOrder', id })).ok, true)
+  assert.equal(fx.rows.orders[0].buyerUnread, true)
+  assert.equal(fx.rows.orders[0].sellerUnread, false)
+  assert.equal(fx.rows.products[0].status, 'sold')
+  fx.setUser('buyer')
+  assert.equal((await fx.main({ action: 'listOrders', role: 'buyer' })).data[0].unread, true)
+  assert.equal((await fx.main({ action: 'markOrdersRead', role: 'seller' })).data.cleared, 0)
+  assert.equal(fx.rows.orders[0].buyerUnread, true)
+})
+
+test('买家取消提醒卖家；卖家取消提醒买家，订单和聊天历史保留', async () => {
+  const fx = fixture()
+  const first = (await fx.main({ action: 'createOrder', productId: 'p1' })).data.id
+  assert.equal((await fx.main({ action: 'cancelOrder', id: first })).ok, true)
+  assert.equal(fx.rows.orders[0].buyerUnread, false)
+  assert.equal(fx.rows.orders[0].sellerUnread, true)
+  const second = (await fx.main({ action: 'createOrder', productId: 'p1' })).data.id
+  fx.setUser('seller')
+  assert.equal((await fx.main({ action: 'markOrdersRead', role: 'buyer' })).data.cleared, 0)
+  assert.equal(fx.rows.orders[0].sellerUnread, true)
+  assert.equal((await fx.main({ action: 'cancelOrder', id: second })).ok, true)
+  assert.equal(fx.rows.orders[1].buyerUnread, true)
+  assert.equal(fx.rows.orders[1].sellerUnread, false)
+  assert.equal(fx.rows.products[0].status, 'selling')
+  assert.equal(fx.rows.conversations.length, 1)
+  assert.equal(fx.rows.messages.length, 1)
+  assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 0, seller: 1, total: 1 })
+})
+
+test('旧订单缺少未读字段时视为已读，按现有角色索引分批读取全部订单', async () => {
+  const fx = fixture()
+  fx.rows.orders.push({ _id: 'old', buyerId: 'buyer', sellerId: 'seller', productId: 'legacy', status: 'completed', createdAt: 1 })
+  assert.equal((await fx.main({ action: 'listOrders', role: 'buyer' })).data[0].unread, false)
+  for (let index = 0; index < 105; index++) fx.rows.orders.push({ _id: `past-${index}`, buyerId: 'buyer', sellerId: 'seller', productId: 'legacy', status: 'cancelled', buyerUnread: index % 2 === 0, sellerUnread: false, createdAt: index + 2 })
+  assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 53, seller: 0, total: 53 })
+  assert.equal((await fx.main({ action: 'markOrdersRead', role: 'buyer' })).data.cleared, 53)
+  assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 0, seller: 0, total: 0 })
+  assert.equal('buyerUnread' in fx.rows.orders[0], false)
+  assert.equal((await fx.main({ action: 'markOrdersRead', role: 'other' })).error.code, 'INVALID_INPUT')
+})
+
+test('同一账号同时是买家和卖家时，标记一侧已读不清另一侧', async () => {
+  const fx = fixture()
+  const bought = (await fx.main({ action: 'createOrder', productId: 'p1' })).data.id
+  fx.setUser('seller')
+  await fx.main({ action: 'confirmOrder', id: bought })
+  fx.rows.products.push({ _id: 'p4', sellerId: 'buyer', school: campus.schoolName, title: '旧书架', images: [], price: 35, status: 'selling' })
+  await fx.main({ action: 'createOrder', productId: 'p4' })
+  fx.setUser('buyer')
+  assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 1, seller: 1, total: 2 })
+  assert.equal((await fx.main({ action: 'markOrdersRead', role: 'buyer' })).data.cleared, 1)
+  assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 0, seller: 1, total: 1 })
+  assert.equal((await fx.main({ action: 'markOrdersRead', role: 'seller' })).data.cleared, 1)
+  assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 0, seller: 0, total: 0 })
 })

@@ -136,11 +136,13 @@
 
 .orders-content { padding-bottom: calc(48px + env(safe-area-inset-bottom)); }
 .order-tabs { display: flex; gap: 6px; margin-bottom: 24px; padding: 5px; border-radius: t.$radius-pill; background: t.$surface; }
-.order-tabs > text { flex: 1; padding: 16px 8px; border-radius: t.$radius-pill; color: t.$text-secondary; font-size: t.$font-secondary; text-align: center; }
+.order-tabs > text { display: flex; flex: 1; align-items: center; justify-content: center; gap: 8px; padding: 16px 8px; border-radius: t.$radius-pill; color: t.$text-secondary; font-size: t.$font-secondary; text-align: center; }
 .order-tabs > text.is-selected { background: t.$primary-light; color: t.$primary-dark; font-weight: 800; }
+.order-tabs .badge { min-height: 30px; padding: 2px 9px; }
 .order-card { margin-bottom: 18px; padding: 23px; border: 1px solid t.$border; border-radius: t.$radius-card; background: t.$surface; box-shadow: t.$shadow-card; }
 .order-card:active { transform: scale(.995); }
 .order-card__top, .order-card__bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: t.$text-secondary; font-size: t.$font-caption; }
+.order-card__badges { display: flex; align-items: center; gap: 8px; }
 .order-card__product { display: flex; gap: 17px; align-items: center; margin: 18px 0; }
 .order-card__photo { flex: 0 0 136px; width: 136px; height: 136px; border-radius: t.$radius-medium; }
 .order-card__info { display: flex; flex: 1; flex-direction: column; gap: 10px; min-width: 0; }
@@ -202,6 +204,8 @@
 .menu-card { overflow: hidden; padding: 0 21px; border: 1px solid t.$border; border-radius: t.$radius-card; background: t.$surface; }
 .menu-card__item { display: flex; align-items: center; min-height: 94px; gap: 16px; border-bottom: 1px solid t.$border; color: t.$text-primary; font-size: 23px; font-weight: 600; }
 .menu-card__item:last-child { border: 0; }
+.menu-card__unread { margin-left: auto; }
+.menu-card__unread + .menu-card__arrow { margin-left: 0; }
 .menu-card__icon { display: flex; align-items: center; justify-content: center; width: 53px; height: 53px; border-radius: t.$radius-medium; background: t.$surface-tint; }
 .menu-card__arrow { margin-left: auto; opacity: .55; }
 .profile-note { display: flex; align-items: center; gap: 13px; margin: 24px 0 10px; padding: 22px; border-radius: t.$radius-large; background: t.$primary-light; }
