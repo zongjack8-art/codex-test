@@ -70,6 +70,18 @@ function createAdminHandler({ db, admins, products, reports, users }) {
       return { isAdmin: debug.roleMatches && debug.enabledMatches, debug }
     }
     await assertAdmin(openid)
+    if (action === 'getAdminNotificationSummary') {
+      let pendingReports = 0
+      let offset = 0
+      while (true) {
+        // Scan in batches without requiring a new compound database index.
+        const rows = (await reports.where({ type: 'product' }).skip(offset).limit(100).get()).data
+        pendingReports += rows.filter(row => row.status === 'pending' && row.school === campus.schoolName).length
+        if (rows.length < 100) break
+        offset += rows.length
+      }
+      return { pendingReports }
+    }
     if (action === 'adminListProducts') return listProducts()
     if (action === 'adminListReports') return listReports()
     if (action === 'adminTakeDownProduct') {

@@ -44,6 +44,7 @@ function fixture() {
         where(query) {
           const selected = () => rows[name].filter(row => matches(row, query))
           return {
+            skip(offset) { return { limit(count) { return { async get() { return { data: selected().slice(offset, offset + count) } } } } } },
             limit(count) { return { async get() { return { data: selected().slice(0, count) } } } },
             orderBy(field, direction) { return {
               limit(count) { return { async get() { return { data: selected().sort((a, b) => direction === 'desc' ? (b[field] || 0) - (a[field] || 0) : (a[field] || 0) - (b[field] || 0)).slice(0, count) } } } }
@@ -88,7 +89,7 @@ test('管理员身份只由真实 OPENID 和 admins 文档决定；伪造字段�
       ...scan, exactMatchByScan: false, trimmedMatchByScan: false
     }
   })
-  for (const action of ['adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport']) {
+  for (const action of ['getAdminNotificationSummary', 'adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport']) {
     const result = await fx.main({ action, openid: ADMIN_OPENID, userId: ADMIN_OPENID, isAdmin: true, role: 'admin', id: 'p1', reason: '违规商品', resolution: 'dismiss' })
     assert.equal(result.error.code, 'FORBIDDEN', action)
   }
@@ -104,9 +105,11 @@ test('管理员身份只由真实 OPENID 和 admins 文档决定；伪造字段�
       }
     })
     assert.equal((await fx.main({ action: 'adminListProducts' })).error.code, 'FORBIDDEN')
+    assert.equal((await fx.main({ action: 'getAdminNotificationSummary', openid: ADMIN_OPENID })).error.code, 'FORBIDDEN')
   }
   fx.setUser('')
   assert.equal((await fx.main({ action: 'getAdminStatus', openid: ADMIN_OPENID })).error.code, 'UNAUTHENTICATED')
+  assert.equal((await fx.main({ action: 'getAdminNotificationSummary', openid: ADMIN_OPENID })).error.code, 'UNAUTHENTICATED')
   fx.setUser(ADMIN_OPENID)
   const status = (await fx.main({ action: 'getAdminStatus' })).data
   assert.deepEqual(status, {
@@ -118,6 +121,28 @@ test('管理员身份只由真实 OPENID 和 admins 文档决定；伪造字段�
   })
   assert.equal(JSON.stringify(status).includes(ADMIN_OPENID), false)
   assert.equal((await fx.main({ action: 'adminListProducts' })).ok, true)
+})
+
+test('待处理举报只计本校 pending 商品举报，跨批次不漏计，处理后减少', async () => {
+  const fx = fixture(); fx.setUser(ADMIN_OPENID)
+  const summary = () => fx.main({ action: 'getAdminNotificationSummary', school: '其他学校', status: 'resolved' })
+  assert.deepEqual((await summary()).data, { pendingReports: 3 })
+  fx.rows.reports.push(
+    { _id: 'foreign_report', type: 'product', school: '其他学校', status: 'pending' },
+    { _id: 'legacy_report', type: 'product', status: 'pending' },
+    { _id: 'done_report', type: 'product', school: campus.schoolName, status: 'resolved' },
+    { _id: 'dismissed_report', type: 'product', school: campus.schoolName, status: 'dismissed' },
+    ...Array.from({ length: 105 }, (_, index) => ({
+      _id: `pending_${index}`, type: 'product', school: campus.schoolName, status: 'pending'
+    }))
+  )
+  assert.deepEqual((await summary()).data, { pendingReports: 108 })
+  assert.equal((await fx.main({ action: 'adminResolveReport', id: 'r1', resolution: 'dismiss' })).ok, true)
+  assert.deepEqual((await summary()).data, { pendingReports: 107 })
+  assert.equal((await fx.main({ action: 'adminResolveReport', id: 'r2', resolution: 'takedown' })).ok, true)
+  assert.deepEqual((await summary()).data, { pendingReports: 106 })
+  fx.rows.reports.splice(0)
+  assert.deepEqual((await summary()).data, { pendingReports: 0 })
 })
 
 test('管理员扫描诊断只返回最多 20 条记录的计数和长度；空格匹配不授予权限', async () => {

@@ -23,7 +23,7 @@ const orders = db.collection('orders')
 const admins = db.collection('admins')
 const chatActions = new Set(['startConversation', 'listConversations', 'getConversation', 'listMessages', 'sendMessage', 'markConversationRead', 'getUnreadMessageCount'])
 const orderActions = new Set(['createOrder', 'listOrders', 'getOrder', 'confirmOrder', 'completeOrder', 'cancelOrder', 'getOrderUnreadSummary', 'markOrdersRead'])
-const adminActions = new Set(['getAdminStatus', 'adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport'])
+const adminActions = new Set(['getAdminStatus', 'getAdminNotificationSummary', 'adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport'])
 
 function identity() {
   const openid = cloud.getWXContext().OPENID

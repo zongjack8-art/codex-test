@@ -1,6 +1,7 @@
 import { Text, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
+import { useAdminNotifications } from '../hooks/useAdminNotifications'
 import { getUnreadMessageCount } from '../services/chat'
 import { getOrderUnreadSummary } from '../services/orders'
 import { unreadCountLabel } from '../utils/orders'
@@ -15,7 +16,8 @@ const tabs: { page: string; label: string; icon: IconName; url: string }[] = [
   { page: 'profile', label: '我的', icon: 'user', url: '/pages/profile/index' }
 ]
 
-export default function TabNav({ active, unreadCount, orderUnreadCount }: { active: string; unreadCount?: number; orderUnreadCount?: number }) {
+export default function TabNav({ active, unreadCount, orderUnreadCount, adminPendingReports }: { active: string; unreadCount?: number; orderUnreadCount?: number; adminPendingReports?: number }) {
+  const adminNotifications = useAdminNotifications(adminPendingReports === undefined)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
   const [loadedUnread, setLoadedUnread] = useState(0)
   const [loadedOrderUnread, setLoadedOrderUnread] = useState(0)
@@ -45,7 +47,7 @@ export default function TabNav({ active, unreadCount, orderUnreadCount }: { acti
     return () => Taro.offKeyboardHeightChange(onHeight)
   }, [])
   if (keyboardOpen) return null
-  const profileUnread = orderUnreadCount ?? loadedOrderUnread
+  const profileUnread = (orderUnreadCount ?? loadedOrderUnread) + (adminPendingReports ?? adminNotifications.pendingReports)
   return <View className='tab-nav'>
     {tabs.map(tab => <View key={tab.page} className={`tab-nav__item ${active === tab.page ? 'is-active' : ''} ${tab.page === 'publish' ? 'tab-nav__publish' : ''}`} onClick={() => active !== tab.page && Taro.reLaunch({ url: tab.url })}>
       <View className='tab-nav__icon-wrap'><Icon name={tab.icon} size='md' />{tab.page === 'messages' && (unreadCount ?? loadedUnread) > 0 && <Text className='tab-nav__badge'>{(unreadCount ?? loadedUnread) > 99 ? '99+' : unreadCount ?? loadedUnread}</Text>}{tab.page === 'profile' && profileUnread > 0 && <Text className='tab-nav__badge'>{unreadCountLabel(profileUnread)}</Text>}</View>

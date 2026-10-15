@@ -41,6 +41,7 @@ export async function getAdminStatus(): Promise<{ isAdmin: boolean }> {
 }
 
 export const adminListProducts = () => adminCall<AdminProduct[]>('adminListProducts')
+export const getAdminNotificationSummary = () => adminCall<{ pendingReports: number }>('getAdminNotificationSummary')
 export const adminTakeDownProduct = (id: string, reason: string) => adminCall<{ takenDown: boolean }>('adminTakeDownProduct', { id, reason })
 export const adminListReports = () => adminCall<AdminReport[]>('adminListReports')
 export const adminResolveReport = (id: string, resolution: 'takedown' | 'dismiss') => adminCall<{ resolved: boolean }>('adminResolveReport', { id, resolution })

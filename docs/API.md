@@ -68,8 +68,10 @@ Cloud 模式的订单调用 `market` action：`createOrder`、`listOrders`、`ge
 
 ## 管理员 CloudBase 接口
 
-当前管理员后台仅支持微信 CloudBase 模式，没有对应 HTTP 服务端。`market` action 包括 `getAdminStatus`（只返回 `{ isAdmin }`）、`adminListProducts`、`adminTakeDownProduct`（`{ id, reason }`）、`adminListReports`、`adminResolveReport`（`{ id, resolution: 'takedown' | 'dismiss' }`）。除状态查询外，每次请求都由云函数读取真实微信 OPENID 并检查 `admins` 集合；客户端提供的管理员身份字段不起作用。商品和举报列表第一版最多返回 100 条，详细字段见 [DATABASE.md](DATABASE.md)。
+当前管理员后台仅支持微信 CloudBase 模式，没有对应 HTTP 服务端。`market` action 包括 `getAdminStatus`（返回 `{ isAdmin, debug }`，临时诊断仅含布尔值、计数和长度）、`getAdminNotificationSummary`（返回 `{ pendingReports: number }`，仅管理员可调用）、`adminListProducts`、`adminTakeDownProduct`（`{ id, reason }`）、`adminListReports`、`adminResolveReport`（`{ id, resolution: 'takedown' | 'dismiss' }`）。除状态查询外，每次请求都由云函数读取真实微信 OPENID 并检查 `admins` 集合；客户端提供的管理员身份字段不起作用。商品和举报列表第一版最多返回 100 条，详细字段见 [DATABASE.md](DATABASE.md)。
 
 ## 图片上传
 
 `POST /uploads/images`：`multipart/form-data`，文件字段 `file`，Bearer 认证。响应 `{ "data": { "url": "https://..." } }`。服务端限制文件大小、MIME 类型、数量，重编码并移除元数据；返回可供微信小程序访问的 HTTPS 地址。
+
+待处理举报计数严格限定为 `type=product`、`status=pending`、`school=天津师范大学`，学校由服务端配置决定；不返回举报内容或身份字段。云函数按商品举报分批扫描统计，不要求新增数据库索引。前端使用 `visiblePoller`：页面显示立即刷新，可见时每 5000ms 刷新，隐藏/卸载停止，网络失败保留最近成功数量；普通用户不查询管理员计数。底部“我的”徽标为订单未读与待处理举报数之和；“管理后台”和“举报处理”入口只显示待处理举报数，零值隐藏。

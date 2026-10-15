@@ -34,8 +34,10 @@
 
 ## 云函数协议
 
-前端统一调用 `market`。订单使用 `createOrder`、`listOrders`、`getOrder`、`confirmOrder`、`completeOrder`、`cancelOrder`、`getOrderUnreadSummary`、`markOrdersRead`；聊天使用 `startConversation`、`listConversations`、`getConversation`、`listMessages`、`sendMessage`、`markConversationRead`、`getUnreadMessageCount`；管理员使用 `getAdminStatus`、`adminListProducts`、`adminTakeDownProduct`、`adminListReports`、`adminResolveReport`。原有商品、用户、收藏、上传及举报 action 保留。返回 `{ ok: true, data }` 或 `{ ok: false, error: { code, message } }`。管理员操作只相信云函数上下文 OPENID 与 `admins` 集合；客户端传入的 `isAdmin`、`role` 或 `openid` 不决定权限。
+前端统一调用 `market`。订单使用 `createOrder`、`listOrders`、`getOrder`、`confirmOrder`、`completeOrder`、`cancelOrder`、`getOrderUnreadSummary`、`markOrdersRead`；聊天使用 `startConversation`、`listConversations`、`getConversation`、`listMessages`、`sendMessage`、`markConversationRead`、`getUnreadMessageCount`；管理员使用 `getAdminStatus`、`getAdminNotificationSummary`、`adminListProducts`、`adminTakeDownProduct`、`adminListReports`、`adminResolveReport`。原有商品、用户、收藏、上传及举报 action 保留。返回 `{ ok: true, data }` 或 `{ ok: false, error: { code, message } }`。管理员操作只相信云函数上下文 OPENID 与 `admins` 集合；客户端传入的 `isAdmin`、`role` 或 `openid` 不决定权限。
 
 ## 当前边界
 
 代码已配置 envId 和显式数据模式，并有本地安全单测。此仓库提交**不代表**集合、规则、索引、云函数已在你的云环境创建或部署；真实微信登录、云存储权限及聊天双账号隔离都必须按以上步骤在电脑和真机验证。站内消息只支持商品相关的一对一文字沟通，不提供支付、交易担保或学生身份认证。
+
+管理员举报提醒需要重新部署本分支的 `market`（包含 `getAdminNotificationSummary`）并重新构建小程序，无需新增集合或索引。用普通账号提交本校商品举报后，管理员“我的”Tab、“管理后台”及后台“举报处理”入口应在可见期间最多约 5 秒内更新数字；驳回或确认违规后返回页面应立即刷新减少。订单未读数继续独立保留，并在“我的”Tab 与举报数相加。普通账号直接调用计数 action 应返回 `FORBIDDEN`。这些是电脑端待验证步骤，不代表真实云环境已经部署或真机验收。
