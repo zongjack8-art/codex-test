@@ -68,7 +68,7 @@ Cloud 模式的订单调用 `market` action：`createOrder`、`listOrders`、`ge
 
 ## 管理员 CloudBase 接口
 
-当前管理员后台仅支持微信 CloudBase 模式，没有对应 HTTP 服务端。`market` action 包括 `getAdminStatus`（返回 `{ isAdmin, debug }`，临时诊断仅含布尔值、计数和长度）、`getAdminNotificationSummary`（返回 `{ pendingReports: number }`，仅管理员可调用）、`adminListProducts`、`adminTakeDownProduct`（`{ id, reason }`）、`adminListReports`、`adminResolveReport`（`{ id, resolution: 'takedown' | 'dismiss' }`）。除状态查询外，每次请求都由云函数读取真实微信 OPENID 并检查 `admins` 集合；客户端提供的管理员身份字段不起作用。商品和举报列表第一版最多返回 100 条，详细字段见 [DATABASE.md](DATABASE.md)。
+当前管理员后台仅支持微信 CloudBase 模式，没有对应 HTTP 服务端。`market` action 包括 `getAdminStatus`（只返回 `{ isAdmin: boolean }`）、`getAdminNotificationSummary`（返回 `{ pendingReports: number }`，仅管理员可调用）、`adminListProducts`、`adminTakeDownProduct`（`{ id, reason }`）、`adminListReports`、`adminResolveReport`（`{ id, resolution: 'takedown' | 'dismiss' }`）。每次请求都由云函数读取真实微信 OPENID；管理员操作检查 `admins` 集合，客户端提供的管理员身份字段不起作用。商品和举报列表第一版最多返回 100 条，详细字段见 [DATABASE.md](DATABASE.md)。
 
 ## 图片上传
 
