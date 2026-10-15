@@ -4,10 +4,10 @@ const { cleanText, fail, productStatus, safeId } = require('./security')
 const currentSchool = row => !row.school || row.school === campus.schoolName
 
 function createAdminHandler({ db, admins, products, reports, users }) {
-  const one = async (collection, id) => (await collection.where({ _id: id }).limit(1).get()).data[0] || null
+  const findAdmin = async openid => (await admins.where({ openid }).limit(1).get()).data[0] || null
 
   async function assertAdmin(openid) {
-    const admin = await one(admins, openid)
+    const admin = await findAdmin(openid)
     if (!admin || admin.enabled !== true || admin.role !== 'admin') fail('FORBIDDEN', '没有管理员权限')
   }
 
@@ -53,7 +53,7 @@ function createAdminHandler({ db, admins, products, reports, users }) {
 
   return async function adminAction(action, event, openid) {
     if (action === 'getAdminStatus') {
-      const admin = await one(admins, openid)
+      const admin = await findAdmin(openid)
       return { isAdmin: admin?.enabled === true && admin.role === 'admin' }
     }
     await assertAdmin(openid)

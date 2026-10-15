@@ -63,12 +63,13 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `_id` | string | 在控制台手工填写的管理员真实微信 OPENID |
+| `_id` | string | CloudBase 自动生成的文档 ID，不填 OPENID |
+| `openid` | string | 在控制台填写的完整管理员真实微信 OPENID，不截断 |
 | `role` | string | 固定 `admin` |
 | `enabled` | boolean | 只有 `true` 才授予权限 |
 | `createdAt` | number | 授权时间，Unix 毫秒 |
 
-`admins` 仅供云函数访问；小程序客户端规则为 `read: false, write: false`。管理员角色不得放在用户可自行编辑的 `users` 集合。云函数每次管理员操作都根据 `getWXContext().OPENID` 查询该集合，前端传入的身份或角色一律无效。`_id` 默认索引足够，不需要新增复合索引。
+`admins` 仅供云函数访问；小程序客户端规则为 `read: false, write: false`。管理员角色不得放在用户可自行编辑的 `users` 集合。云函数每次管理员操作都根据 `getWXContext().OPENID` 执行 `admins.where({ openid }).limit(1)`，前端传入的身份或角色一律无效。第一版管理员数量很少，不新增索引；规模增长后可评估 `openid` 单字段索引。
 
 ## conversations
 

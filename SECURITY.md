@@ -16,7 +16,7 @@ CampusMarket 当前以天津师范大学为单校配置，默认构建使用 Moc
 
 ## 管理员
 
-`admins._id` 由控制台手工填入真实微信 OPENID。`getAdminStatus` 只返回布尔值；商品和举报管理 action 每次都用云函数上下文 OPENID 检查 `admins` 文档的 `role=admin` 且 `enabled=true`。客户端提供的 `openid`、`userId`、`role` 或 `isAdmin` 无效。管理员下架和举报处理通过服务端事务将商品标记为 `offline` 和 `moderationStatus=blocked`；普通卖家的状态更新也在事务中复查封锁状态，不能重新上架。历史订单、会话和消息不随下架删除。`admins` 的规则必须在真实控制台设为客户端不可读写；不要将真实管理员 OPENID 提交到仓库。
+`admins._id` 由 CloudBase 自动生成，完整真实微信 OPENID 保存在 `admins.openid` 字段。`getAdminStatus` 只返回布尔值；商品和举报管理 action 每次都用云函数上下文 OPENID 执行 `admins.where({ openid }).limit(1)`，并检查文档的 `role=admin` 且 `enabled=true`。客户端提供的 `openid`、`userId`、`role` 或 `isAdmin` 无效。管理员下架和举报处理通过服务端事务将商品标记为 `offline` 和 `moderationStatus=blocked`；普通卖家的状态更新也在事务中复查封锁状态，不能重新上架。历史订单、会话和消息不随下架删除。`admins` 的规则必须在真实控制台设为客户端不可读写；不要将真实管理员 OPENID 提交到仓库。
 
 商品图片清理只接受当前卖家目录下的文件 ID，避免旧记录中的其他用户图片被误删。
 

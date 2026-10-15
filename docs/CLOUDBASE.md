@@ -26,11 +26,11 @@
 
 1. 在 CloudBase 数据库创建 **`admins`** 集合，并将安全规则设为 `cloudbase/rules/admins.json` 中的 `{ "read": false, "write": false }`。只有 `market` 云函数可以读写管理员记录；不要把管理员角色放进用户可以编辑的 `users` 文档。
 2. 先用拟授权的微信账号打开 **Cloud 模式**小程序，在 `users` 集合找到该账号首次登录创建的文档。复制其 `_id`，它对应真实微信 OPENID；不要使用昵称、手机号或前端传来的 ID。不要把这个真实 OPENID 写进代码、文档或 Git。
-3. 在控制台通过管理员账号手工向 `admins` 集合新增一条文档，例如 `{ "_id": "管理员真实OPENID", "role": "admin", "enabled": true, "createdAt": 0 }`；`createdAt` 建议填实际毫秒时间戳。集合规则关闭的是小程序客户端访问，控制台管理操作仍可完成。第一版**不提供**在小程序里添加或删除管理员的功能。停用管理员时，在控制台把 `enabled` 改为 `false`。
+3. 在控制台向 `admins` 集合新增一条文档，文档 ID 选择系统自动生成，填写 `{ "openid": "管理员真实OPENID", "role": "admin", "enabled": true, "createdAt": 0 }`；`createdAt` 建议填实际毫秒时间戳。完整复制 OPENID 到 `openid` 字段，不要截断，也不要填入自定义 `_id`；每个 OPENID 只保留一条管理员文档。集合规则关闭的是小程序客户端访问，控制台管理操作仍可完成。第一版**不提供**在小程序里添加或删除管理员的功能。停用管理员时，在控制台把 `enabled` 改为 `false`。
 4. 重新部署 `cloudfunctions/market` 后，运行 `TARO_APP_DATA_SOURCE=cloud pnpm build:weapp` 并在微信开发者工具重新编译。管理员账号进入“我的”应看见“管理后台”；普通账号不应看见。普通账号即使直接调用 `adminListProducts`、`adminTakeDownProduct`、`adminListReports`、`adminResolveReport`，也应收到 `FORBIDDEN`。
 5. 用普通账号举报一件商品，再用管理员账号进入“举报处理”选择下架或驳回。下架后该商品应离开首页与收藏在售流，卖家不能自行重新上架；聊天和订单历史仍应保留。对测试商品完成验证后，再处理真实举报。
 
-`admins` 以 `_id` 直接定位，无需新增复合索引。商品和举报列表第一版每次最多读取 100 条，在云函数内排序；若数据量增长，需要再设计分页和索引，当前不需额外创建索引。仓库代码**不代表**云端已创建 `admins`、写入管理员或部署新函数。
+`admins` 使用系统自动生成的 `_id`，云函数以真实 OPENID 查询 `admins.where({ openid }).limit(1)`。第一版管理员很少，不新增索引；管理员规模增长后可按查询性能再评估 `openid` 单字段索引。商品和举报列表第一版每次最多读取 100 条，在云函数内排序；若数据量增长，需要再设计分页和索引。仓库代码**不代表**云端已创建 `admins`、写入管理员或部署新函数。
 
 ## 云函数协议
 

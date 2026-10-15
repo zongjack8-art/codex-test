@@ -2,14 +2,17 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const Module = require('node:module')
 const campus = require('./campus.json')
+const ADMIN_OPENID = 'test_admin_openid_12345678901234567890'
+const DISABLED_OPENID = 'test_disabled_openid_12345678901234567890'
+const WRONG_ROLE_OPENID = 'test_wrong_role_openid_12345678901234567890'
 
 function fixture() {
   let openid = 'buyer'
   const rows = {
     admins: [
-      { _id: 'admin', role: 'admin', enabled: true, createdAt: 1 },
-      { _id: 'disabled', role: 'admin', enabled: false, createdAt: 1 },
-      { _id: 'wrong_role', role: 'user', enabled: true, createdAt: 1 }
+      { _id: 'generated_admin_1', openid: ADMIN_OPENID, role: 'admin', enabled: true, createdAt: 1 },
+      { _id: 'generated_admin_2', openid: DISABLED_OPENID, role: 'admin', enabled: false, createdAt: 1 },
+      { _id: 'generated_admin_3', openid: WRONG_ROLE_OPENID, role: 'user', enabled: true, createdAt: 1 }
     ],
     users: [{ _id: 'seller', nickname: '卖家同学', avatar: '卖' }],
     products: [
@@ -73,25 +76,27 @@ function fixture() {
 
 test('管理员身份只由真实 OPENID 和 admins 文档决定；伪造字段无效', async () => {
   const fx = fixture()
-  assert.deepEqual((await fx.main({ action: 'getAdminStatus', openid: 'admin', isAdmin: true, role: 'admin' })).data, { isAdmin: false })
+  assert.ok(ADMIN_OPENID.length > 24)
+  assert.notEqual(fx.rows.admins[0]._id, ADMIN_OPENID)
+  assert.deepEqual((await fx.main({ action: 'getAdminStatus', openid: ADMIN_OPENID, isAdmin: true, role: 'admin' })).data, { isAdmin: false })
   for (const action of ['adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport']) {
-    const result = await fx.main({ action, openid: 'admin', userId: 'admin', isAdmin: true, role: 'admin', id: 'p1', reason: '违规商品', resolution: 'dismiss' })
+    const result = await fx.main({ action, openid: ADMIN_OPENID, userId: ADMIN_OPENID, isAdmin: true, role: 'admin', id: 'p1', reason: '违规商品', resolution: 'dismiss' })
     assert.equal(result.error.code, 'FORBIDDEN', action)
   }
-  for (const who of ['disabled', 'wrong_role']) {
+  for (const who of [DISABLED_OPENID, WRONG_ROLE_OPENID]) {
     fx.setUser(who)
     assert.deepEqual((await fx.main({ action: 'getAdminStatus' })).data, { isAdmin: false })
     assert.equal((await fx.main({ action: 'adminListProducts' })).error.code, 'FORBIDDEN')
   }
   fx.setUser('')
-  assert.equal((await fx.main({ action: 'getAdminStatus', openid: 'admin' })).error.code, 'UNAUTHENTICATED')
-  fx.setUser('admin')
+  assert.equal((await fx.main({ action: 'getAdminStatus', openid: ADMIN_OPENID })).error.code, 'UNAUTHENTICATED')
+  fx.setUser(ADMIN_OPENID)
   assert.deepEqual((await fx.main({ action: 'getAdminStatus' })).data, { isAdmin: true })
   assert.equal((await fx.main({ action: 'adminListProducts' })).ok, true)
 })
 
 test('管理员只见本校商品和商品举报，内部清理记录不混入列表', async () => {
-  const fx = fixture(); fx.setUser('admin')
+  const fx = fixture(); fx.setUser(ADMIN_OPENID)
   const products = (await fx.main({ action: 'adminListProducts' })).data
   assert.deepEqual(products.map(item => item.id), ['p1', 'p2'])
   assert.equal(products[0].sellerNickname, '卖家同学')
@@ -102,13 +107,13 @@ test('管理员只见本校商品和商品举报，内部清理记录不混入�
 })
 
 test('管理员下架后公共流和收藏流隐藏商品，卖家不能伪造重新上架；历史保留', async () => {
-  const fx = fixture(); fx.setUser('admin')
+  const fx = fixture(); fx.setUser(ADMIN_OPENID)
   assert.equal((await fx.main({ action: 'adminTakeDownProduct', id: 'foreign', reason: '违规商品' })).error.code, 'NOT_FOUND')
   const result = await fx.main({ action: 'adminTakeDownProduct', id: 'p1', reason: '违反平台商品发布规范', moderatedBy: 'buyer', status: 'selling' })
   assert.equal(result.ok, true)
   assert.equal(fx.rows.products[0].status, 'offline')
   assert.equal(fx.rows.products[0].moderationStatus, 'blocked')
-  assert.equal(fx.rows.products[0].moderatedBy, 'admin')
+  assert.equal(fx.rows.products[0].moderatedBy, ADMIN_OPENID)
   fx.setUser('buyer')
   assert.equal((await fx.main({ action: 'listProducts' })).data.some(item => item._id === 'p1'), false)
   assert.equal((await fx.main({ action: 'getFavorites' })).data.some(item => item._id === 'p1'), false)
@@ -121,10 +126,10 @@ test('管理员下架后公共流和收藏流隐藏商品，卖家不能伪造�
 })
 
 test('举报驳回不下架，确认违规则下架；已处理举报不可重复处理', async () => {
-  const fx = fixture(); fx.setUser('admin')
+  const fx = fixture(); fx.setUser(ADMIN_OPENID)
   assert.equal((await fx.main({ action: 'adminResolveReport', id: 'r1', resolution: 'dismiss' })).ok, true)
   assert.equal(fx.rows.reports[0].status, 'dismissed')
-  assert.equal(fx.rows.reports[0].resolvedBy, 'admin')
+  assert.equal(fx.rows.reports[0].resolvedBy, ADMIN_OPENID)
   assert.equal(fx.rows.products[0].status, 'selling')
   assert.equal((await fx.main({ action: 'adminResolveReport', id: 'r1', resolution: 'takedown' })).error.code, 'INVALID_STATE')
   assert.equal((await fx.main({ action: 'adminResolveReport', id: 'r2', resolution: 'takedown' })).ok, true)
