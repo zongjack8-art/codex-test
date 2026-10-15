@@ -136,13 +136,29 @@ test('待处理举报只计本校 pending 商品举报，跨批次不漏计，�
       _id: `pending_${index}`, type: 'product', school: campus.schoolName, status: 'pending'
     }))
   )
-  assert.deepEqual((await summary()).data, { pendingReports: 108 })
+  assert.ok((await fx.main({ action: 'adminListReports' })).data.some(row => row.id === 'legacy_report'))
+  assert.deepEqual((await summary()).data, { pendingReports: 109 })
   assert.equal((await fx.main({ action: 'adminResolveReport', id: 'r1', resolution: 'dismiss' })).ok, true)
-  assert.deepEqual((await summary()).data, { pendingReports: 107 })
+  assert.deepEqual((await summary()).data, { pendingReports: 108 })
   assert.equal((await fx.main({ action: 'adminResolveReport', id: 'r2', resolution: 'takedown' })).ok, true)
-  assert.deepEqual((await summary()).data, { pendingReports: 106 })
+  assert.deepEqual((await summary()).data, { pendingReports: 107 })
   fx.rows.reports.splice(0)
   assert.deepEqual((await summary()).data, { pendingReports: 0 })
+})
+
+test('提醒计数与举报列表一致：本校及缺少 school 的待处理举报计入，其他学校和已处理记录排除', async () => {
+  const fx = fixture(); fx.setUser(ADMIN_OPENID)
+  fx.rows.reports = [
+    { _id: 'current', type: 'product', school: campus.schoolName, status: 'pending' },
+    { _id: 'legacy', type: 'product', status: 'pending' },
+    { _id: 'foreign', type: 'product', school: '其他学校', status: 'pending' },
+    { _id: 'resolved', type: 'product', school: campus.schoolName, status: 'resolved' },
+    { _id: 'dismissed', type: 'product', status: 'dismissed' },
+    { _id: 'cleanup', type: 'image_cleanup', school: campus.schoolName, status: 'pending' }
+  ]
+  const listed = (await fx.main({ action: 'adminListReports' })).data
+  assert.deepEqual(listed.map(row => row.id), ['current', 'legacy', 'resolved', 'dismissed'])
+  assert.deepEqual((await fx.main({ action: 'getAdminNotificationSummary' })).data, { pendingReports: 2 })
 })
 
 test('管理员扫描诊断只返回最多 20 条记录的计数和长度；空格匹配不授予权限', async () => {
