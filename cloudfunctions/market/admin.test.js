@@ -78,20 +78,29 @@ test('管理员身份只由真实 OPENID 和 admins 文档决定；伪造字段�
   const fx = fixture()
   assert.ok(ADMIN_OPENID.length > 24)
   assert.notEqual(fx.rows.admins[0]._id, ADMIN_OPENID)
-  assert.deepEqual((await fx.main({ action: 'getAdminStatus', openid: ADMIN_OPENID, isAdmin: true, role: 'admin' })).data, { isAdmin: false })
+  assert.deepEqual((await fx.main({ action: 'getAdminStatus', openid: ADMIN_OPENID, isAdmin: true, role: 'admin' })).data, {
+    isAdmin: false, debug: { adminFound: false, roleMatches: false, enabledMatches: false }
+  })
   for (const action of ['adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport']) {
     const result = await fx.main({ action, openid: ADMIN_OPENID, userId: ADMIN_OPENID, isAdmin: true, role: 'admin', id: 'p1', reason: '违规商品', resolution: 'dismiss' })
     assert.equal(result.error.code, 'FORBIDDEN', action)
   }
-  for (const who of [DISABLED_OPENID, WRONG_ROLE_OPENID]) {
+  for (const [who, debug] of [
+    [DISABLED_OPENID, { adminFound: true, roleMatches: true, enabledMatches: false }],
+    [WRONG_ROLE_OPENID, { adminFound: true, roleMatches: false, enabledMatches: true }]
+  ]) {
     fx.setUser(who)
-    assert.deepEqual((await fx.main({ action: 'getAdminStatus' })).data, { isAdmin: false })
+    assert.deepEqual((await fx.main({ action: 'getAdminStatus' })).data, { isAdmin: false, debug })
     assert.equal((await fx.main({ action: 'adminListProducts' })).error.code, 'FORBIDDEN')
   }
   fx.setUser('')
   assert.equal((await fx.main({ action: 'getAdminStatus', openid: ADMIN_OPENID })).error.code, 'UNAUTHENTICATED')
   fx.setUser(ADMIN_OPENID)
-  assert.deepEqual((await fx.main({ action: 'getAdminStatus' })).data, { isAdmin: true })
+  const status = (await fx.main({ action: 'getAdminStatus' })).data
+  assert.deepEqual(status, {
+    isAdmin: true, debug: { adminFound: true, roleMatches: true, enabledMatches: true }
+  })
+  assert.equal(JSON.stringify(status).includes(ADMIN_OPENID), false)
   assert.equal((await fx.main({ action: 'adminListProducts' })).ok, true)
 })
 

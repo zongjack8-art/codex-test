@@ -54,7 +54,12 @@ function createAdminHandler({ db, admins, products, reports, users }) {
   return async function adminAction(action, event, openid) {
     if (action === 'getAdminStatus') {
       const admin = await findAdmin(openid)
-      return { isAdmin: admin?.enabled === true && admin.role === 'admin' }
+      const debug = {
+        adminFound: Boolean(admin),
+        roleMatches: admin?.role === 'admin',
+        enabledMatches: admin?.enabled === true
+      }
+      return { isAdmin: debug.roleMatches && debug.enabledMatches, debug }
     }
     await assertAdmin(openid)
     if (action === 'adminListProducts') return listProducts()
