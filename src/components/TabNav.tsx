@@ -1,9 +1,10 @@
 import { Text, View } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { useEffect, useState } from 'react'
+import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import { useEffect, useRef, useState } from 'react'
 import { getUnreadMessageCount } from '../services/chat'
 import { getOrderUnreadSummary } from '../services/orders'
 import { unreadCountLabel } from '../utils/orders'
+import { createVisiblePoller } from '../utils/visiblePoller'
 import Icon, { type IconName } from './Icon'
 
 const tabs: { page: string; label: string; icon: IconName; url: string }[] = [
@@ -18,7 +19,21 @@ export default function TabNav({ active, unreadCount, orderUnreadCount }: { acti
   const [keyboardOpen, setKeyboardOpen] = useState(false)
   const [loadedUnread, setLoadedUnread] = useState(0)
   const [loadedOrderUnread, setLoadedOrderUnread] = useState(0)
-  useEffect(() => { getUnreadMessageCount().then(setLoadedUnread).catch(() => setLoadedUnread(0)) }, [active])
+  const visible = useRef(true)
+  const messagePoller = useRef<ReturnType<typeof createVisiblePoller> | null>(null)
+  if (!messagePoller.current) messagePoller.current = createVisiblePoller(async isCurrent => {
+    try {
+      const count = await getUnreadMessageCount()
+      if (isCurrent()) setLoadedUnread(count)
+    } catch { /* Preserve the last successful count until the next poll. */ }
+  })
+  useDidShow(() => { visible.current = true; if (unreadCount === undefined) messagePoller.current?.start() })
+  useDidHide(() => { visible.current = false; messagePoller.current?.stop() })
+  useEffect(() => {
+    if (unreadCount === undefined && visible.current) messagePoller.current?.start()
+    else messagePoller.current?.stop()
+    return () => messagePoller.current?.stop()
+  }, [active, unreadCount])
   useEffect(() => {
     if (orderUnreadCount !== undefined) return
     getOrderUnreadSummary().then(summary => setLoadedOrderUnread(summary.total)).catch(() => setLoadedOrderUnread(0))

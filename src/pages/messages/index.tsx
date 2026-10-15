@@ -1,6 +1,6 @@
 import { Text, View } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
+import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import { useEffect, useRef, useState } from 'react'
 import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
 import ProductPhoto from '../../components/ProductPhoto'
@@ -8,6 +8,7 @@ import TabNav from '../../components/TabNav'
 import { isH5CloudFallback } from '../../services/mode'
 import { getUnreadMessageCount, listConversations } from '../../services/chat'
 import type { ChatConversation } from '../../types/market'
+import { createVisiblePoller } from '../../utils/visiblePoller'
 
 function chatTime(value: number): string {
   const date = new Date(value)
@@ -21,17 +22,28 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
-  const load = () => {
-    setLoading(true); setError(false)
-    Promise.all([listConversations(), getUnreadMessageCount()]).then(([conversations, count]) => { setItems(conversations); setUnreadCount(count) }).catch(() => setError(true)).finally(() => setLoading(false))
-  }
-  useDidShow(load)
+  const hasLoaded = useRef(false)
+  const poller = useRef<ReturnType<typeof createVisiblePoller> | null>(null)
+  if (!poller.current) poller.current = createVisiblePoller(async (isCurrent, silent) => {
+    const showLoading = !silent && !hasLoaded.current
+    if (showLoading) { setLoading(true); setError(false) }
+    try {
+      const [conversations, count] = await Promise.all([listConversations(), getUnreadMessageCount()])
+      if (!isCurrent()) return
+      setItems(conversations); setUnreadCount(count); setError(false)
+      hasLoaded.current = true
+    } catch { if (isCurrent() && !hasLoaded.current) setError(true) }
+    finally { if (isCurrent() && showLoading) setLoading(false) }
+  })
+  useDidShow(() => poller.current?.start())
+  useDidHide(() => poller.current?.stop())
+  useEffect(() => { poller.current?.start(); return () => poller.current?.stop() }, [])
 
   return <View className='page page--with-nav'>
     <View className='page-heading'><Text className='page-heading__eyebrow'>CAMPUS CONVERSATIONS</Text><Text className='page-heading__title'>消息</Text><Text className='page-heading__desc'>和同学聊聊好物，约个方便的校内地点。</Text></View>
     <View className='content-pad messages-content'>
       {isH5CloudFallback() && <Text className='mode-banner'>H5 当前使用本机演示消息。</Text>}
-      {loading ? <View className='listing-skeleton'><View /><View /></View> : error ? <EmptyState kind='error' title='暂时没能加载消息' description='检查网络后再试一次' action='重试' onAction={load} /> : items.length ? <>
+      {loading ? <View className='listing-skeleton'><View /><View /></View> : error ? <EmptyState kind='error' title='暂时没能加载消息' description='检查网络后再试一次' action='重试' onAction={() => { void poller.current?.refresh(false) }} /> : items.length ? <>
         <View className='messages-summary'><Text>和同学的对话</Text><Text>{unreadCount ? `${unreadCount} 条未读` : '消息已读完'}</Text></View>
         {items.map(item => <View key={item.id} className='conversation-card' onClick={() => Taro.navigateTo({ url: `/pages/chat/index?id=${encodeURIComponent(item.id)}` })}>
           <Avatar value={item.other.avatar} className='conversation-card__avatar' />
