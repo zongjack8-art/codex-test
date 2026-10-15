@@ -7,6 +7,7 @@ import EmptyState from '../../../components/EmptyState'
 import ProductPhoto from '../../../components/ProductPhoto'
 import { adminListReports, adminResolveReport, getAdminStatus, type AdminReport } from '../../../services/admin'
 import { formatDetailTime } from '../../../utils/format'
+import './index.scss'
 
 const reasonLabels: Record<AdminReport['reason'], string> = { prohibited: '违禁/不适合交易', misleading: '描述不实', fraud: '疑似欺诈', other: '其他' }
 

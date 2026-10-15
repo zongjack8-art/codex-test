@@ -1,0 +1,5 @@
+// Keep an explicit, non-empty stylesheet for each admin page's WXSS output.
+// Match the existing global spacing so the page appearance stays consistent.
+.admin-content {
+  padding-bottom: calc(70px + env(safe-area-inset-bottom));
+}

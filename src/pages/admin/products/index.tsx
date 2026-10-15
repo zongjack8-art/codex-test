@@ -8,6 +8,7 @@ import ProductPhoto from '../../../components/ProductPhoto'
 import { campusConfig } from '../../../config/campus'
 import { adminListProducts, adminTakeDownProduct, getAdminStatus, type AdminProduct } from '../../../services/admin'
 import { formatDetailTime } from '../../../utils/format'
+import './index.scss'
 
 const reason = '违反平台商品发布规范'
 

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { getAdminStatus } from '../../services/admin'
+import './index.scss'
 
 export default function AdminPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null)
