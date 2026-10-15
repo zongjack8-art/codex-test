@@ -78,8 +78,15 @@ test('管理员身份只由真实 OPENID 和 admins 文档决定；伪造字段�
   const fx = fixture()
   assert.ok(ADMIN_OPENID.length > 24)
   assert.notEqual(fx.rows.admins[0]._id, ADMIN_OPENID)
+  const scan = {
+    adminCount: 3, openidFieldCount: 3, currentOpenidLength: 'buyer'.length,
+    storedOpenidLengths: [ADMIN_OPENID.length, DISABLED_OPENID.length, WRONG_ROLE_OPENID.length]
+  }
   assert.deepEqual((await fx.main({ action: 'getAdminStatus', openid: ADMIN_OPENID, isAdmin: true, role: 'admin' })).data, {
-    isAdmin: false, debug: { adminFound: false, roleMatches: false, enabledMatches: false }
+    isAdmin: false, debug: {
+      adminFound: false, roleMatches: false, enabledMatches: false,
+      ...scan, exactMatchByScan: false, trimmedMatchByScan: false
+    }
   })
   for (const action of ['adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport']) {
     const result = await fx.main({ action, openid: ADMIN_OPENID, userId: ADMIN_OPENID, isAdmin: true, role: 'admin', id: 'p1', reason: '违规商品', resolution: 'dismiss' })
@@ -90,7 +97,12 @@ test('管理员身份只由真实 OPENID 和 admins 文档决定；伪造字段�
     [WRONG_ROLE_OPENID, { adminFound: true, roleMatches: false, enabledMatches: true }]
   ]) {
     fx.setUser(who)
-    assert.deepEqual((await fx.main({ action: 'getAdminStatus' })).data, { isAdmin: false, debug })
+    assert.deepEqual((await fx.main({ action: 'getAdminStatus' })).data, {
+      isAdmin: false, debug: {
+        ...debug, ...scan, currentOpenidLength: who.length,
+        exactMatchByScan: true, trimmedMatchByScan: true
+      }
+    })
     assert.equal((await fx.main({ action: 'adminListProducts' })).error.code, 'FORBIDDEN')
   }
   fx.setUser('')
@@ -98,10 +110,41 @@ test('管理员身份只由真实 OPENID 和 admins 文档决定；伪造字段�
   fx.setUser(ADMIN_OPENID)
   const status = (await fx.main({ action: 'getAdminStatus' })).data
   assert.deepEqual(status, {
-    isAdmin: true, debug: { adminFound: true, roleMatches: true, enabledMatches: true }
+    isAdmin: true, debug: {
+      adminFound: true, roleMatches: true, enabledMatches: true,
+      ...scan, currentOpenidLength: ADMIN_OPENID.length,
+      exactMatchByScan: true, trimmedMatchByScan: true
+    }
   })
   assert.equal(JSON.stringify(status).includes(ADMIN_OPENID), false)
   assert.equal((await fx.main({ action: 'adminListProducts' })).ok, true)
+})
+
+test('管理员扫描诊断只返回最多 20 条记录的计数和长度；空格匹配不授予权限', async () => {
+  const fx = fixture()
+  fx.rows.admins[0].openid = ` ${ADMIN_OPENID} `
+  fx.rows.admins.push({ _id: 'missing_openid', role: 'admin', enabled: true })
+  fx.setUser(ADMIN_OPENID)
+  const status = (await fx.main({ action: 'getAdminStatus' })).data
+  assert.deepEqual(status, {
+    isAdmin: false, debug: {
+      adminFound: false, roleMatches: false, enabledMatches: false,
+      adminCount: 4, openidFieldCount: 3,
+      exactMatchByScan: false, trimmedMatchByScan: true,
+      currentOpenidLength: ADMIN_OPENID.length,
+      storedOpenidLengths: [ADMIN_OPENID.length + 2, DISABLED_OPENID.length, WRONG_ROLE_OPENID.length]
+    }
+  })
+  assert.equal((await fx.main({ action: 'adminListProducts' })).error.code, 'FORBIDDEN')
+  assert.equal(JSON.stringify(status).includes(ADMIN_OPENID), false)
+
+  fx.rows.admins.push(...Array.from({ length: 20 }, (_, index) => ({
+    _id: `extra_${index}`, openid: `extra_${index}`, role: 'user', enabled: false
+  })))
+  const limited = (await fx.main({ action: 'getAdminStatus' })).data.debug
+  assert.equal(limited.adminCount, 20)
+  assert.equal(limited.openidFieldCount, 19)
+  assert.equal(limited.storedOpenidLengths.length, 19)
 })
 
 test('管理员只见本校商品和商品举报，内部清理记录不混入列表', async () => {

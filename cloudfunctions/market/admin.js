@@ -54,10 +54,18 @@ function createAdminHandler({ db, admins, products, reports, users }) {
   return async function adminAction(action, event, openid) {
     if (action === 'getAdminStatus') {
       const admin = await findAdmin(openid)
+      const rows = (await admins.limit(20).get()).data
+      const storedOpenids = rows.map(row => row.openid).filter(value => typeof value === 'string')
       const debug = {
         adminFound: Boolean(admin),
         roleMatches: admin?.role === 'admin',
-        enabledMatches: admin?.enabled === true
+        enabledMatches: admin?.enabled === true,
+        adminCount: rows.length,
+        openidFieldCount: storedOpenids.length,
+        exactMatchByScan: storedOpenids.some(value => value === openid),
+        trimmedMatchByScan: storedOpenids.some(value => value.trim() === openid.trim()),
+        currentOpenidLength: openid.length,
+        storedOpenidLengths: storedOpenids.map(value => value.length)
       }
       return { isAdmin: debug.roleMatches && debug.enabledMatches, debug }
     }
