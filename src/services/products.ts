@@ -24,6 +24,7 @@ interface CloudProduct {
   images: string[]
   location?: string
   status?: ProductStatus | 'active'
+  moderationStatus?: 'blocked'
   viewerIsSeller?: boolean
   createdAt?: number | string
   updatedAt?: number | string
@@ -47,6 +48,7 @@ function fromCloud(item: CloudProduct): Product {
     images: Array.isArray(item.images) ? item.images : [],
     campus: normalizeLegacyLocation(item.location),
     status: productStatus(item.status),
+    moderationStatus: item.moderationStatus === 'blocked' ? 'blocked' : undefined,
     viewerIsSeller: item.viewerIsSeller,
     createdAt: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : '',
     seller: item.seller || { id: item.sellerId, nickname: '校园同学', campus: campusConfig.campusName, school: campusConfig.schoolName, avatar: '同' },

@@ -17,7 +17,7 @@ function fixture() {
       { _id: 'p3', sellerId: 'seller', school: campus.schoolName, title: '下架教材', images: [], price: 18, status: 'offline' },
       { _id: 'legacy', sellerId: 'seller', title: '旧商品', images: [], price: 8 }
     ], favorites: [], reports: [], conversations: [{ _id: 'conv1', productId: 'p1', buyerId: 'buyer', sellerId: 'seller' }],
-    messages: [{ _id: 'msg1', conversationId: 'conv1', content: '你好' }], orders: []
+    messages: [{ _id: 'msg1', conversationId: 'conv1', content: '你好' }], orders: [], admins: []
   }
   const command = { in: values => ({ op: 'in', values }), gte: value => ({ op: 'gte', value }), neq: value => ({ op: 'neq', value }) }
   const matches = (row, query) => Object.entries(query).every(([key, expected]) => {

@@ -26,7 +26,7 @@ function marketFixture() {
     if (value && typeof value === 'object' && 'neq' in value) return row[key] !== value.neq
     return row[key] === value
   })
-  const db = { command, collection(name) {
+  const db = { command, async runTransaction(callback) { return callback({ collection: name => db.collection(name) }) }, collection(name) {
     return {
       where(query) {
         let offset = 0; let limit = Infinity; let sort = null
@@ -45,6 +45,7 @@ function marketFixture() {
         return cursor
       },
       doc(id) { return {
+        async get() { return { data: rows[name].find(row => row._id === id) || null } },
         async update({ data }) { Object.assign(rows[name].find(row => row._id === id), data) },
         async remove() { rows[name] = rows[name].filter(row => row._id !== id) }
       } }

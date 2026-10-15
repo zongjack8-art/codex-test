@@ -1,8 +1,8 @@
 # 天津师范大学 CloudBase 数据结构
 
-目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports`、`conversations`、`messages`、`orders` 七个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
+目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports`、`conversations`、`messages`、`orders`、`admins` 八个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
 
-七个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
+八个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
 
 ## users
 
@@ -34,8 +34,10 @@
 | `location` | string | 校内面交范围，2–80 字符；前端兼容现有 `campus` 字段 |
 | `status` | string | `selling`、`sold`、`offline` |
 | `createdAt`, `updatedAt` | number | 创建和最近修改时间 |
+| `moderationStatus` | string / 缺失 | 管理员下架时为 `blocked`；旧商品缺失视为未封锁 |
+| `moderationReason`, `moderatedAt`, `moderatedBy` | string / number | 管理员下架理由、时间和真实 OPENID |
 
-公共列表只显示本校 `selling` 商品及旧版 `active` 商品；卖家的“我的发布”展示自己的全部状态。状态流转固定为 `selling → sold/offline`、`offline → selling`；`sold` 为终态，只能删除。编辑仅允许 `selling/offline`。更新状态、编辑和删除均先校验 `sellerId`。旧商品缺少 `status` 或使用 `active` 时，详情页按在售显示，状态操作按在售处理；缺少 `location`、`createdAt` 时前端使用安全的展示回退，无需清空现有商品。创建限制为每个微信身份每天最多 20 件。删除会清理相关收藏与不再被引用的商品图，但保留聊天会话和消息；若云存储删除失败，写入 `reports` 待处理。
+公共列表只显示本校 `selling` 商品及旧版 `active` 商品，并排除管理员封锁商品；卖家的“我的发布”展示自己的全部状态。管理员封锁后商品改为 `offline`，卖家不能自行重新上架。状态流转固定为 `selling → sold/offline`、`offline → selling`；`sold` 为终态，只能删除。编辑仅允许 `selling/offline`。更新状态、编辑和删除均先校验 `sellerId`。旧商品缺少 `status` 或使用 `active` 时，详情页按在售显示，状态操作按在售处理；缺少 `location`、`createdAt` 时前端使用安全的展示回退，无需清空现有商品。创建限制为每个微信身份每天最多 20 件。删除会清理相关收藏与不再被引用的商品图，但保留聊天会话和消息；若云存储删除失败，写入 `reports` 待处理。
 
 ## favorites
 
@@ -52,10 +54,21 @@
 
 一个集合保留两种记录，不另建审核系统：
 
-- `type=product`：商品详情页的举报通过现有 `createReport` 写入。字段为 `reporterId`（云函数 OPENID）、`productId`、`reason`（`prohibited` 违规商品 / `misleading` 虚假信息 / `fraud` 疑似诈骗 / `other` 其他）、`description`（最多 500 字符）、`school`、`status=pending`、`createdAt`、`updatedAt`。卖家不能举报自己的商品；同一用户对同一商品的待处理举报不重复创建，每天最多 10 次。当前没有审核后台。
+- `type=product`：商品详情页的举报通过现有 `createReport` 写入。字段为 `reporterId`（云函数 OPENID）、`productId`、`reason`（`prohibited` 违规商品 / `misleading` 虚假信息 / `fraud` 疑似诈骗 / `other` 其他）、`description`（最多 500 字符）、`school`、`status=pending`、`createdAt`、`updatedAt`。卖家不能举报自己的商品；同一用户对同一商品的待处理举报不重复创建，每天最多 10 次。管理员处理后状态变为 `resolved` 或 `dismissed`，写入 `resolution`、`resolvedAt`、`resolvedBy`。
 - `type=image_cleanup`：图片清理失败的内部待办。字段为 `productId`、`fileIDs`、`reason`、`school`、`status=pending`、`createdAt`、`updatedAt`。管理员需定期检查日志并手动处理。
 
 不要允许客户端读取或直接写入 `reports`。
+
+## admins
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `_id` | string | 在控制台手工填写的管理员真实微信 OPENID |
+| `role` | string | 固定 `admin` |
+| `enabled` | boolean | 只有 `true` 才授予权限 |
+| `createdAt` | number | 授权时间，Unix 毫秒 |
+
+`admins` 仅供云函数访问；小程序客户端规则为 `read: false, write: false`。管理员角色不得放在用户可自行编辑的 `users` 集合。云函数每次管理员操作都根据 `getWXContext().OPENID` 查询该集合，前端传入的身份或角色一律无效。`_id` 默认索引足够，不需要新增复合索引。
 
 ## conversations
 

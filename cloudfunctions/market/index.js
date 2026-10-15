@@ -4,6 +4,7 @@ const { randomUUID } = require('node:crypto')
 const campus = require('./campus.json')
 const { createChatHandler } = require('./chat')
 const { createOrderHandler } = require('./orders')
+const { createAdminHandler } = require('./admin')
 const {
   AppError, CATEGORIES, MAX_IMAGE_BYTES, fail, cleanText, safeId,
   ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, productStatus, assertStatusTransition, escapeRegExp
@@ -19,8 +20,10 @@ const reports = db.collection('reports')
 const conversations = db.collection('conversations')
 const messages = db.collection('messages')
 const orders = db.collection('orders')
+const admins = db.collection('admins')
 const chatActions = new Set(['startConversation', 'listConversations', 'getConversation', 'listMessages', 'sendMessage', 'markConversationRead', 'getUnreadMessageCount'])
 const orderActions = new Set(['createOrder', 'listOrders', 'getOrder', 'confirmOrder', 'completeOrder', 'cancelOrder', 'getOrderUnreadSummary', 'markOrdersRead'])
+const adminActions = new Set(['getAdminStatus', 'adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport'])
 
 function identity() {
   const openid = cloud.getWXContext().OPENID
@@ -58,6 +61,7 @@ async function ensureUser(openid) {
 }
 const chat = createChatHandler({ db, users, products, conversations, messages, ensureUser })
 const orderAction = createOrderHandler({ db, users, products, orders, ensureUser })
+const adminAction = createAdminHandler({ db, admins, products, reports, users })
 async function hydrate(items) {
   if (!items.length) return []
   const ids = [...new Set(items.map(item => item.sellerId))]
@@ -119,7 +123,7 @@ async function run(action, event) {
     const condition = regex ? _.or([{ ...base, title: regex }, { ...base, description: regex }]) : base
     const sort = filters.sort === 'priceAsc' ? ['price', 'asc'] : filters.sort === 'priceDesc' ? ['price', 'desc'] : ['createdAt', 'desc']
     const result = await products.where(condition).orderBy(sort[0], sort[1]).limit(50).get()
-    return hydrate(result.data)
+    return hydrate(result.data.filter(item => item.moderationStatus !== 'blocked'))
   }
   if (action === 'getProduct') {
     const openid = identity()
@@ -131,6 +135,7 @@ async function run(action, event) {
   const openid = identity()
   if (chatActions.has(action)) return chat(action, event, openid)
   if (orderActions.has(action)) return orderAction(action, event, openid)
+  if (adminActions.has(action)) return adminAction(action, event, openid)
   if (action === 'login') return publicUser(await ensureUser(openid))
   if (action === 'updateProfile') {
     await ensureUser(openid)
@@ -257,9 +262,15 @@ async function run(action, event) {
     return (await hydrate([await one(products, old._id)]))[0]
   }
   if (action === 'setProductStatus') {
-    const old = await ownedProduct(event.id, openid)
-    assertStatusTransition(old.status, event.status)
-    await products.doc(old._id).update({ data: { status: event.status, updatedAt: Date.now() } })
+    const id = safeId(event.id)
+    await db.runTransaction(async tx => {
+      const old = (await tx.collection('products').doc(id).get()).data
+      if (!old) fail('NOT_FOUND', '商品不存在')
+      assertOwner(old, openid)
+      if (old.moderationStatus === 'blocked' && event.status === 'selling') fail('FORBIDDEN', '管理员下架的商品不能自行重新上架')
+      assertStatusTransition(old.status, event.status)
+      await tx.collection('products').doc(id).update({ data: { status: event.status, updatedAt: Date.now() } })
+    })
     return { status: event.status }
   }
   if (action === 'deleteProduct') {
@@ -274,7 +285,7 @@ async function run(action, event) {
     const ids = rows.map(item => item.productId)
     if (action === 'getFavoriteIds') return ids
     if (!ids.length) return []
-    const items = (await products.where({ _id: _.in(ids.slice(0, 50)), school: campus.schoolName, status: _.neq('offline') }).limit(50).get()).data
+    const items = (await products.where({ _id: _.in(ids.slice(0, 50)), school: campus.schoolName, status: _.neq('offline') }).limit(50).get()).data.filter(item => item.moderationStatus !== 'blocked')
     const ordered = ids.map(id => items.find(item => item._id === id)).filter(Boolean)
     return hydrate(ordered)
   }
@@ -284,7 +295,7 @@ async function run(action, event) {
     const key = favoriteId(openid, id)
     if (event.favorited) {
       const item = await one(products, id)
-      if (!item || (item.school && item.school !== campus.schoolName) || productStatus(item.status) !== 'selling') fail('NOT_FOUND', '商品未在售')
+      if (!item || (item.school && item.school !== campus.schoolName) || item.moderationStatus === 'blocked' || productStatus(item.status) !== 'selling') fail('NOT_FOUND', '商品未在售')
       if (!await one(favorites, key)) {
         const count = await favorites.where({ userId: openid }).count()
         if (count.total >= 500) fail('RATE_LIMITED', '收藏数量已达上限')

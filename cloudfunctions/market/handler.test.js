@@ -7,10 +7,11 @@ test('云函数拒绝非卖家编辑、下架和删除商品', async () => {
   let mutations = 0
   const fakeDb = {
     command: {},
+    async runTransaction(callback) { return callback({ collection: name => fakeDb.collection(name) }) },
     collection(name) {
       return {
         where(query) { return { limit() { return { async get() { return { data: name === 'products' && query._id === product._id ? [product] : [] } } } } } },
-        doc() { return { async update() { mutations++ }, async remove() { mutations++ } } }
+        doc() { return { async get() { return { data: name === 'products' ? product : null } }, async update() { mutations++ }, async remove() { mutations++ } } }
       }
     }
   }

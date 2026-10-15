@@ -8,6 +8,7 @@ import Icon, { type IconName } from '../../components/Icon'
 import TabNav from '../../components/TabNav'
 import { campusConfig } from '../../config/campus'
 import { demoUser } from '../../data/mock'
+import { getAdminStatus } from '../../services/admin'
 import { getCurrentUser, getSession, loginWithWechat, signOut } from '../../services/auth'
 import { getDataMode, isH5CloudFallback } from '../../services/mode'
 import { getOrderUnreadSummary } from '../../services/orders'
@@ -24,13 +25,18 @@ export default function ProfilePage() {
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [soldCount, setSoldCount] = useState(0)
   const [orderUnread, setOrderUnread] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
   const unreadRequest = useRef(0)
+  const adminRequest = useRef(0)
   const loadProfile = () => {
     setProfileLoading(getDataMode() === 'cloud')
     setProfileError(false)
     getCurrentUser().then(user => { setProfile(user); setSession(getSession()) }).catch(() => setProfileError(true)).finally(() => setProfileLoading(false))
   }
   useDidShow(() => {
+    const adminCheck = ++adminRequest.current
+    setIsAdmin(false)
+    getAdminStatus().then(result => { if (adminCheck === adminRequest.current) setIsAdmin(result.isAdmin === true) }).catch(() => { if (adminCheck === adminRequest.current) setIsAdmin(false) })
     const request = ++unreadRequest.current
     getOrderUnreadSummary().then(summary => { if (request === unreadRequest.current) setOrderUnread(summary.total) }).catch(() => { if (request === unreadRequest.current) setOrderUnread(0) })
     setSession(getSession())
@@ -46,6 +52,7 @@ export default function ProfilePage() {
   const menu: { icon: IconName; label: string; action: () => void }[] = [
     { icon: 'package', label: '我的发布', action: () => Taro.navigateTo({ url: '/pages/my-listings/index' }) },
     { icon: 'check', label: '我的订单', action: () => Taro.navigateTo({ url: '/pages/orders/index' }) },
+    ...(isAdmin ? [{ icon: 'shield' as IconName, label: '管理后台', action: () => Taro.navigateTo({ url: '/pages/admin/index' }) }] : []),
     { icon: 'heart', label: '我的收藏', action: () => Taro.navigateTo({ url: '/pages/favorites/index' }) },
     { icon: 'edit', label: '编辑个人资料', action: () => Taro.navigateTo({ url: '/pages/profile/edit' }) },
     { icon: 'shield', label: '交易安全提醒', action: () => Taro.showModal({ title: '安心面交', content: '优先约在图书馆、食堂等校内公共区域；现场核对商品；不要提前转账。', showCancel: false }) },

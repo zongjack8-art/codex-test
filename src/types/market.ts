@@ -37,6 +37,7 @@ export interface Product {
   seller: Seller
   createdAt: string
   status: ProductStatus
+  moderationStatus?: 'blocked'
   /** Set by getProduct; in Cloud mode this comes from the market function's OPENID check. */
   viewerIsSeller?: boolean
 }
