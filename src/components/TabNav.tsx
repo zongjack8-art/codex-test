@@ -23,22 +23,32 @@ export default function TabNav({ active, unreadCount, orderUnreadCount, adminPen
   const [loadedOrderUnread, setLoadedOrderUnread] = useState(0)
   const visible = useRef(true)
   const messagePoller = useRef<ReturnType<typeof createVisiblePoller> | null>(null)
+  const orderPoller = useRef<ReturnType<typeof createVisiblePoller> | null>(null)
   if (!messagePoller.current) messagePoller.current = createVisiblePoller(async isCurrent => {
     try {
       const count = await getUnreadMessageCount()
       if (isCurrent()) setLoadedUnread(count)
     } catch { /* Preserve the last successful count until the next poll. */ }
   })
+  if (!orderPoller.current) orderPoller.current = createVisiblePoller(async isCurrent => {
+    try {
+      const summary = await getOrderUnreadSummary()
+      if (isCurrent()) setLoadedOrderUnread(summary.total)
+    } catch { /* Preserve the last successful count until the next poll. */ }
+  }, 5000)
   useDidShow(() => { visible.current = true; if (unreadCount === undefined) messagePoller.current?.start() })
   useDidHide(() => { visible.current = false; messagePoller.current?.stop() })
+  useDidShow(() => { if (orderUnreadCount === undefined) orderPoller.current?.start() })
+  useDidHide(() => { orderPoller.current?.stop() })
   useEffect(() => {
     if (unreadCount === undefined && visible.current) messagePoller.current?.start()
     else messagePoller.current?.stop()
     return () => messagePoller.current?.stop()
   }, [active, unreadCount])
   useEffect(() => {
-    if (orderUnreadCount !== undefined) return
-    getOrderUnreadSummary().then(summary => setLoadedOrderUnread(summary.total)).catch(() => setLoadedOrderUnread(0))
+    if (orderUnreadCount === undefined && visible.current) orderPoller.current?.start()
+    else orderPoller.current?.stop()
+    return () => orderPoller.current?.stop()
   }, [active, orderUnreadCount])
   useEffect(() => {
     if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP) return
