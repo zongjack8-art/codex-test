@@ -6,6 +6,7 @@ export default defineAppConfig({
     'pages/messages/index',
     'pages/profile/index',
     'pages/favorites/index',
+    'pages/history/index',
     'pages/detail/index',
     'pages/chat/index',
     'pages/my-listings/index',

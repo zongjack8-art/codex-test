@@ -13,6 +13,7 @@ import { getFavoriteIds, getProduct, toggleFavorite } from '../../services/produ
 import { submitReport, type ReportReason } from '../../services/reports'
 import { createOrder } from '../../services/orders'
 import { getSellerReviewSummary } from '../../services/reviews'
+import { recordProductView } from '../../services/recentViews'
 import type { Product, SellerReviewSummary } from '../../types/market'
 import { formatDetailTime } from '../../utils/format'
 import { retainRouteId } from '../../utils/routeId'
@@ -55,6 +56,7 @@ export default function DetailPage() {
     if (!id) { setProduct(null); setLoadError('商品链接缺少编号'); setLoading(false); return }
     getProduct(id).then(item => {
       setProduct(item)
+      if (item && item.status !== 'offline' && item.moderationStatus !== 'blocked') recordProductView(id).catch(() => undefined)
       if (item) getSellerReviewSummary(item.seller.id).then(setSellerReviewSummary).catch(() => setSellerReviewError(true))
       if (item && detailPermissions(item).canFavorite) getFavoriteIds().then(ids => setFavorite(ids.includes(id))).catch(() => undefined)
     }).catch(() => setLoadError('请检查网络或云环境后重试')).finally(() => setLoading(false))

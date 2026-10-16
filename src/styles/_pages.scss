@@ -82,6 +82,9 @@
 .filter-chips { display: flex; gap: 11px; padding: 0 30px 8px; white-space: nowrap; }
 .sort-actions { display: flex; align-items: center; gap: 15px; color: t.$text-tertiary; white-space: nowrap; }
 .sort-actions .is-selected { color: t.$primary; font-weight: 800; }
+.favorites-filter { margin-top: 0; }
+.history-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; color: t.$text-secondary; font-size: t.$font-secondary; }
+.history-toolbar__clear { padding: 12px 0 12px 12px; color: t.$danger; }
 
 // Product detail
 .page--detail { padding-bottom: calc(145px + env(safe-area-inset-bottom)); }

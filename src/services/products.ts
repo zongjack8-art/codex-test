@@ -11,9 +11,9 @@ import { removeMockImage } from './upload'
 const PRODUCTS_KEY = 'campusmarket.products.v2'
 const FAVORITES_KEY = 'campusmarket.favorites.v2'
 
-interface CloudProduct {
+export interface CloudProduct {
   _id: string
-  sellerId: string
+  sellerId?: string
   seller?: Seller
   title: string
   description: string
@@ -36,7 +36,7 @@ function productStatus(status: CloudProduct['status']): ProductStatus {
   return status === 'selling' || status === 'active' || !status ? 'selling' : 'offline'
 }
 
-function fromCloud(item: CloudProduct): Product {
+export function fromCloud(item: CloudProduct): Product {
   const timestamp = new Date(item.createdAt ?? item.updatedAt ?? '').getTime()
   return {
     id: item._id,
@@ -53,7 +53,7 @@ function fromCloud(item: CloudProduct): Product {
     moderationStatus: item.moderationStatus === 'blocked' ? 'blocked' : undefined,
     viewerIsSeller: item.viewerIsSeller,
     createdAt: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : '',
-    seller: item.seller || { id: item.sellerId, nickname: '校园同学', campus: campusConfig.campusName, school: campusConfig.schoolName, avatar: '同' },
+    seller: item.seller || { id: item.sellerId || '', nickname: '校园同学', campus: campusConfig.campusName, school: campusConfig.schoolName, avatar: '同' },
     coverEmoji: '🎁',
     coverColor: '#e8efe9'
   }
@@ -182,7 +182,11 @@ export async function getFavorites(): Promise<Product[]> {
   if (getDataMode() === 'cloud') return (await cloudCall<CloudProduct[]>('getFavorites')).map(fromCloud)
   if (getDataMode() === 'api') return apiRequest<Product[]>('/me/favorites')
   const ids = await getFavoriteIds()
-  return localProducts().filter(product => ids.includes(product.id))
+  const byId = new Map(localProducts().filter(product =>
+    (!product.school || product.school === campusConfig.schoolName) &&
+    product.moderationStatus !== 'blocked' && product.status !== 'offline'
+  ).map(product => [product.id, product]))
+  return ids.slice().reverse().map(id => byId.get(id)).filter((item): item is Product => Boolean(item)).slice(0, 50)
 }
 
 export async function toggleFavorite(id: string): Promise<boolean> {

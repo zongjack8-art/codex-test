@@ -6,6 +6,7 @@ const { createChatHandler } = require('./chat')
 const { createOrderHandler } = require('./orders')
 const { createAdminHandler } = require('./admin')
 const { createReviewHandler } = require('./reviews')
+const { createRecentViewsHandler } = require('./recent-views')
 const {
   AppError, CATEGORIES, MAX_IMAGE_BYTES, fail, cleanText, safeId,
   ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, productStatus, assertStatusTransition, escapeRegExp
@@ -27,6 +28,7 @@ const orderActions = new Set(['createOrder', 'listOrders', 'getOrder', 'confirmO
 const adminActions = new Set(['getAdminStatus', 'getAdminNotificationSummary', 'adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport'])
 
 const reviewActions = new Set(['createReview', 'getOrderReview', 'getSellerReviewSummary', 'listSellerReviews'])
+const recentViewActions = new Set(['recordProductView', 'listRecentViews', 'clearRecentViews'])
 
 function identity() {
   const openid = cloud.getWXContext().OPENID
@@ -73,6 +75,16 @@ async function hydrate(items) {
   const sellers = new Map(result.data.map(user => [user._id, publicUser(user)]))
   return items.map(item => ({ ...item, seller: sellers.get(item.sellerId) || { id: item.sellerId, nickname: '校园同学', avatar: '同', school: campus.schoolName, campus: campus.campusName } }))
 }
+function publicListing(item) {
+  return {
+    _id: item._id, title: item.title, description: item.description, price: item.price,
+    originalPrice: item.originalPrice, category: item.category, condition: item.condition,
+    images: item.images, location: item.location, status: item.status,
+    createdAt: item.createdAt, updatedAt: item.updatedAt,
+    seller: { id: '', nickname: item.seller.nickname, avatar: item.seller.avatar, school: campus.schoolName, campus: item.seller.campus }
+  }
+}
+const recentViewAction = createRecentViewsHandler({ db, products, hydrate, publicListing })
 async function ownedProduct(id, openid) {
   const product = await one(products, safeId(id))
   if (!product) fail('NOT_FOUND', '商品不存在')
@@ -138,13 +150,7 @@ async function run(action, event) {
     const result = await products.where(condition).orderBy(sort[0], sort[1]).limit(50).get()
     const items = await hydrate(result.data.filter(item => item.moderationStatus !== 'blocked'))
     // List cards only need display fields. Seller OPENIDs and internal moderation data stay on the server.
-    return items.map(item => ({
-      _id: item._id, title: item.title, description: item.description, price: item.price,
-      originalPrice: item.originalPrice, category: item.category, condition: item.condition,
-      images: item.images, location: item.location, status: item.status,
-      createdAt: item.createdAt, updatedAt: item.updatedAt,
-      seller: { id: '', nickname: item.seller.nickname, avatar: item.seller.avatar, school: campus.schoolName, campus: item.seller.campus }
-    }))
+    return items.map(publicListing)
   }
   if (action === 'getProduct') {
     const openid = identity()
@@ -155,6 +161,7 @@ async function run(action, event) {
 
   const openid = identity()
   if (chatActions.has(action)) return chat(action, event, openid)
+  if (recentViewActions.has(action)) return recentViewAction(action, event, openid)
   if (orderActions.has(action)) return orderAction(action, event, openid)
   if (adminActions.has(action)) return adminAction(action, event, openid)
   if (reviewActions.has(action)) return reviewAction(action, event, openid)
@@ -317,13 +324,21 @@ async function run(action, event) {
     return { deleted: true }
   }
   if (action === 'getFavoriteIds' || action === 'getFavorites') {
-    const rows = (await favorites.where({ userId: openid }).orderBy('createdAt', 'desc').limit(500).get()).data
+    const rows = (await favorites.where({ userId: openid }).limit(500).get()).data
+    // Old favorites may have no createdAt. Keep them after newer saves instead of losing them in a sorted query.
+    rows.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     const ids = rows.map(item => item.productId)
     if (action === 'getFavoriteIds') return ids
     if (!ids.length) return []
-    const items = (await products.where({ _id: _.in(ids.slice(0, 50)), school: campus.schoolName, status: _.neq('offline') }).limit(50).get()).data.filter(item => item.moderationStatus !== 'blocked')
-    const ordered = ids.map(id => items.find(item => item._id === id)).filter(Boolean)
-    return hydrate(ordered)
+    const visible = []
+    for (let offset = 0; offset < ids.length && visible.length < 50; offset += 50) {
+      const batch = (await products.where({ _id: _.in(ids.slice(offset, offset + 50)) }).limit(50).get()).data
+      visible.push(...batch.filter(item =>
+        (!item.school || item.school === campus.schoolName) && item.moderationStatus !== 'blocked' && productStatus(item.status) !== 'offline'
+      ))
+    }
+    const byId = new Map(visible.map(item => [item._id, item]))
+    return (await hydrate(ids.map(id => byId.get(id)).filter(Boolean).slice(0, 50))).map(publicListing)
   }
   if (action === 'setFavorite') {
     const id = safeId(event.id)

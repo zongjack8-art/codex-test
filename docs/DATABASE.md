@@ -1,8 +1,8 @@
 # 天津师范大学 CloudBase 数据结构
 
-目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports`、`conversations`、`messages`、`orders`、`admins`、`reviews` 九个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
+目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`recentViews`、`reports`、`conversations`、`messages`、`orders`、`admins`、`reviews` 十个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
 
-九个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
+十个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
 
 ## users
 
@@ -49,6 +49,20 @@
 | `createdAt` | number | 收藏时间 |
 
 `setFavorite` 是幂等状态设置。收藏不能由客户端指定其他用户的 `userId`，仅允许收藏本校在售商品。
+
+收藏列表保留后来变为 `reserved` 或 `sold` 的商品，并显示明确状态；旧收藏缺少 `createdAt` 时按时间 0 排在新收藏后，不会因排序丢失。删除、下架、外校和管理员屏蔽的商品在列表中跳过；取消收藏由现有 `setFavorite` 处理。
+
+## recentViews
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `_id` | string | `rv_` 加 `SHA-256(userId:productId)` 的前 21 个十六进制字符，总长 24；默认 `_id` 唯一索引防重复 |
+| `userId` | string | 云函数从 `getWXContext().OPENID` 获取，不接收客户端身份 |
+| `productId` | string | 浏览的商品 `_id` |
+| `school` | string | 云函数固定为当前学校 |
+| `viewedAt` | number | 最近成功浏览的 Unix 毫秒时间戳 |
+
+同一用户重复查看同一商品仅更新 `viewedAt` 并置顶，单用户最多保留 50 条，按最近浏览倒序返回。商品删除、下架、跨校或被管理员屏蔽时列表安全过滤；已售商品仍可查看。清空只删除当前真实 OPENID 和当前学校的记录，不删除商品。`recentViews` 客户端规则为 `read: false, write: false`。
 
 ## reports
 
@@ -150,6 +164,7 @@
 | `products` | `sellerId` 升序 | 我的发布；按可信 OPENID 分批读取后排序，兼容缺少较新字段的旧商品 |
 | `favorites` | `userId` 升序、`createdAt` 降序 | 我的收藏 |
 | `favorites` | `productId` 升序 | 删除商品时清理收藏 |
+| `recentViews` | `userId` 升序、`school` 升序、`viewedAt` 降序 | 当前用户最近浏览、超过 50 条清理；新建非唯一索引 `recentViews_user_school_viewedAt_desc` |
 | `reports` | `type` 升序、`reporterId` 升序、`productId` 升序、`status` 升序 | 防重复举报 |
 | `reports` | `type` 升序、`reporterId` 升序、`createdAt` 降序 | 每日举报次数 |
 | `conversations` | `buyerId` 升序、`lastMessageAt` 降序 | 当前买家的最近会话 |

@@ -57,6 +57,8 @@
 .product-card__floating { position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; }
 .product-card__floating .badge { background: rgba(255, 255, 255, .93); color: t.$primary-dark; }
 .product-card__floating .badge--warning { background: t.$warning-light; color: t.$warning; }
+.product-card__floating .badge--success { background: t.$success-light; color: t.$success; }
+.product-card__floating .badge--neutral { background: t.$surface-tint; color: t.$text-secondary; }
 .product-card__favorite { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.94); }
 .product-card__favorite.is-active { background: t.$danger-light; }
 .product-card__body { padding: 18px 18px 20px; }

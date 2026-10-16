@@ -48,6 +48,12 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 
 正式后端建议改为幂等的 `PUT`/`DELETE` 收藏接口，避免重复请求导致状态反转；当前 Service 接口与 Mock 实现一致。
 
+Cloud 模式的收藏列表按 `createdAt` 倒序展示，旧收藏无时间字段仍保留；在售、交易中、已售可分别筛选，下架或不存在商品安全跳过。
+
+## 最近浏览
+
+Cloud 模式通过 `market.recordProductView`（`{ productId }`）、`market.listRecentViews` 和 `market.clearRecentViews` 实现。服务端以真实 OPENID 与当前学校筛选、去重和清理，最多保存和返回每人 50 件；客户端传入的 `userId`、`openid`、`school` 无效。列表只返回安全商品展示字段，不包含卖家 OPENID。可选 HTTP 后端如需适配，应提供 `POST /me/recent-views`、`GET /me/recent-views`、`DELETE /me/recent-views`，并由服务端识别当前用户。
+
 ## 站内消息
 
 `src/services/chat.ts` 在 Cloud 模式调用 `market` 的 `startConversation`、`listConversations`、`getConversation`、`listMessages`、`sendMessage`、`markConversationRead`、`getUnreadMessageCount`。若将来实现 HTTP 适配层，需提供以下路径，且服务端必须核验令牌中的真实用户及会话参与资格：

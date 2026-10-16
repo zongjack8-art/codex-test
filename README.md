@@ -30,7 +30,7 @@ TARO_APP_DATA_SOURCE=cloud pnpm build:weapp
 
 PowerShell：`$env:TARO_APP_DATA_SOURCE='cloud'; pnpm build:weapp`。回退本地数据：`TARO_APP_DATA_SOURCE=mock pnpm build:weapp`；PowerShell 改为 `$env:TARO_APP_DATA_SOURCE='mock'; pnpm build:weapp`。每次切换后在微信开发者工具重新编译。`.env.example` 仅是说明文件，不会被自动读取。云端请求失败时会显示重试提示，**不会静默写入本地 Mock**，避免误以为数据已上传。
 
-CloudBase 模式的路径为：页面 → `src/services` → `wx.cloud.callFunction('market')` → 云数据库。`wx.cloud.init` 仅在首次调用时运行一次。云函数从可信微信上下文取得 OPENID，首次登录自动建档；客户端无权指定商品卖家、收藏用户、聊天发送者或学校。昵称、头像、常用校内范围和简介可在“我的 → 编辑个人资料”修改；学校固定为天津师范大学。`users`、`products`、`favorites`、`reports`、`conversations`、`messages` 集合及新版 `market` 云函数**尚需在云开发控制台创建、配置和部署**。
+CloudBase 模式的路径为：页面 → `src/services` → `wx.cloud.callFunction('market')` → 云数据库。`wx.cloud.init` 仅在首次调用时运行一次。云函数从可信微信上下文取得 OPENID，首次登录自动建档；客户端无权指定商品卖家、收藏用户、聊天发送者或学校。昵称、头像、常用校内范围和简介可在“我的 → 编辑个人资料”修改；学校固定为天津师范大学。`recentViews` 集合、安全规则和本分支新版 `market` 云函数**尚需在云开发控制台创建、配置和部署**；其他已有集合保留现有数据。
 
 ## 页面与功能
 
@@ -40,14 +40,15 @@ CloudBase 模式的路径为：页面 → `src/services` → `wx.cloud.callFunct
 | 分类搜索 | `/pages/categories/index` | 标题/描述关键词、分类、价格区间与排序 |
 | 商品详情 | `/pages/detail/index?id=...` | 商品信息、卖家信息、收藏、联系卖家 |
 | 发布/编辑商品 | `/pages/publish/index` | 表单校验、图片上传、保存修改 |
-| 收藏 | `/pages/favorites/index` | 收藏列表、快捷取消收藏 |
+| 收藏 | `/pages/favorites/index` | 在售/交易中/已售筛选、快捷取消收藏 |
+| 最近浏览 | `/pages/history/index` | 最近看过的商品、清空浏览记录 |
 | 消息中心 | `/pages/messages/index` | 会话、商品摘要、未读数 |
 | 聊天 | `/pages/chat/index?id=...` | 围绕商品的一对一文字消息、安全提醒 |
 | 我的 | `/pages/profile/index` | 用户资料、发布与收藏统计、交易安全提醒 |
 | 我的发布 | `/pages/my-listings/index` | 编辑、下架、标记售出、重新上架、删除 |
 | 编辑资料 | `/pages/profile/edit` | 昵称、头像、常用校内范围、简介；学校只读 |
 
-Mock 商品在 `src/data/mock.ts`。商品、收藏、聊天、个人资料和发布文字草稿保存在当前设备；聊天预置一条演示会话。照片不写入草稿，离开发布页后需重新选择。微信小程序 Mock 发布时会把照片转存到本地持久文件（单张不超过 3 MB），编辑移除或删除商品时清理；H5 照片仍使用浏览器临时地址，刷新后可能失效。Mock 数据不会跨设备同步，清除应用数据后也会消失。商品详情可联系卖家；聊天只支持文字，双方约定校内面交后自行付款，平台不提供支付或担保。
+Mock 商品在 `src/data/mock.ts`。商品、收藏、最近浏览、聊天、个人资料和发布文字草稿保存在当前设备；聊天预置一条演示会话。照片不写入草稿，离开发布页后需重新选择。微信小程序 Mock 发布时会把照片转存到本地持久文件（单张不超过 3 MB），编辑移除或删除商品时清理；H5 照片仍使用浏览器临时地址，刷新后可能失效。Mock 数据不会跨设备同步，清除应用数据后也会消失。商品详情可联系卖家；聊天只支持文字，双方约定校内面交后自行付款，平台不提供支付或担保。
 
 内置示例商品会在读取时更新为天津师范大学的通用校内面交描述；已发布的本地商品、收藏及商品状态继续保留。旧 Mock 资料中的学校和虚构校区名在读取时归一化。首页学校名称统一来自校园配置，不依赖用户输入。
 
@@ -59,6 +60,6 @@ Mock 商品在 `src/data/mock.ts`。商品、收藏、聊天、个人资料和�
 TARO_APP_DATA_SOURCE=api TARO_APP_API_BASE_URL=https://api.example.edu pnpm build:weapp
 ```
 
-`src/services/products.ts` 负责商品与收藏，`src/services/chat.ts` 负责站内消息，`src/services/auth.ts` 负责用户，`src/services/upload.ts` 负责上传，`src/services/reports.ts` 负责商品详情举报，`src/services/cloudbase.ts` 只封装云调用。CloudBase 小程序不需要在前端配置 AppSecret。H5 真实微信登录需要独立网页授权后端。
+`src/services/products.ts` 负责商品与收藏，`src/services/recentViews.ts` 负责最近浏览，`src/services/chat.ts` 负责站内消息，`src/services/auth.ts` 负责用户，`src/services/upload.ts` 负责上传，`src/services/reports.ts` 负责商品详情举报，`src/services/cloudbase.ts` 只封装云调用。CloudBase 小程序不需要在前端配置 AppSecret。H5 真实微信登录需要独立网页授权后端。
 
 其他设计文档：[数据库设计](docs/DATABASE.md)、[安全说明](SECURITY.md)。

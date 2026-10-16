@@ -50,6 +50,7 @@ export default function ProfilePage() {
     { icon: 'check', label: '我的订单', action: () => Taro.navigateTo({ url: '/pages/orders/index' }) },
     ...(isAdmin ? [{ icon: 'shield' as IconName, label: '管理后台', action: () => Taro.navigateTo({ url: '/pages/admin/index' }) }] : []),
     { icon: 'heart', label: '我的收藏', action: () => Taro.navigateTo({ url: '/pages/favorites/index' }) },
+    { icon: 'clock', label: '最近浏览', action: () => Taro.navigateTo({ url: '/pages/history/index' }) },
     { icon: 'edit', label: '编辑个人资料', action: () => Taro.navigateTo({ url: '/pages/profile/edit' }) },
     { icon: 'shield', label: '交易安全提醒', action: () => Taro.showModal({ title: '安心面交', content: '优先约在图书馆、食堂等校内公共区域；现场核对商品；不要提前转账。', showCancel: false }) },
     { icon: 'spark', label: '关于校园集市', action: () => Taro.showModal({ title: `关于 ${campusConfig.brandName}`, content: getDataMode() === 'mock' ? `${campusConfig.schoolSlogan}。当前为本机演示版本，数据不会跨设备同步。` : `${campusConfig.schoolSlogan}。通过站内消息约好面交时间地点，验货后双方自行付款；平台不提供支付或担保。`, showCancel: false }) }
