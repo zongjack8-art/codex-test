@@ -1,3 +1,4 @@
+import './index.scss'
 import { Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useRef, useState } from 'react'
