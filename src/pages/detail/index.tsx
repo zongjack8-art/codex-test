@@ -12,7 +12,8 @@ import { startConversation } from '../../services/chat'
 import { getFavoriteIds, getProduct, toggleFavorite } from '../../services/products'
 import { submitReport, type ReportReason } from '../../services/reports'
 import { createOrder } from '../../services/orders'
-import type { Product } from '../../types/market'
+import { getSellerReviewSummary } from '../../services/reviews'
+import type { Product, SellerReviewSummary } from '../../types/market'
 import { formatDetailTime } from '../../utils/format'
 import { retainRouteId } from '../../utils/routeId'
 import { detailPermissions } from './permissions'
@@ -39,6 +40,8 @@ export default function DetailPage() {
   const [reportDescription, setReportDescription] = useState('')
   const [reportBusy, setReportBusy] = useState(false)
   const [reportSubmitted, setReportSubmitted] = useState(false)
+  const [sellerReviewSummary, setSellerReviewSummary] = useState<SellerReviewSummary | null>(null)
+  const [sellerReviewError, setSellerReviewError] = useState(false)
   const favoriteBusyRef = useRef(false)
   const contactBusyRef = useRef(false)
   const reportBusyRef = useRef(false)
@@ -48,9 +51,11 @@ export default function DetailPage() {
     setLoading(true)
     setLoadError('')
     setFavorite(false)
+    setSellerReviewSummary(null); setSellerReviewError(false)
     if (!id) { setProduct(null); setLoadError('商品链接缺少编号'); setLoading(false); return }
     getProduct(id).then(item => {
       setProduct(item)
+      if (item) getSellerReviewSummary(item.seller.id).then(setSellerReviewSummary).catch(() => setSellerReviewError(true))
       if (item && detailPermissions(item).canFavorite) getFavoriteIds().then(ids => setFavorite(ids.includes(id))).catch(() => undefined)
     }).catch(() => setLoadError('请检查网络或云环境后重试')).finally(() => setLoading(false))
   }
@@ -123,7 +128,7 @@ export default function DetailPage() {
       </View>
       <View className='detail-section'><Text className='detail-section__title'>关于这件好物</Text><Text className='detail-section__body'>{product.description}</Text></View>
       <View className='detail-section detail-trade'><Text className='detail-section__title'>校内交易</Text><View className='detail-trade__row'><View className='detail-trade__icon'><Icon name='pin' size='md' /></View><View><Text>面交地点</Text><Text>{product.campus} · 可与卖家约校内公共区域</Text></View></View><View className='detail-trade__row'><View className='detail-trade__icon'><Icon name='shield' size='md' /></View><View><Text>安心提醒</Text><Text>见面确认商品状态，再完成交易</Text></View></View></View>
-      <View className='detail-section detail-seller'><Text className='detail-section__title'>发布同学</Text><View className='detail-seller__row'><Avatar className='detail-seller__avatar' value={product.seller.avatar} /><View className='detail-seller__info'><Text className='detail-seller__name'>{product.seller.nickname || '校园同学'}</Text><Text>{campusConfig.schoolName}</Text><Text>{product.seller.campus || campusConfig.campusName}</Text></View><Badge tone='primary'>校园用户</Badge></View></View>
+      <View className='detail-section detail-seller'><Text className='detail-section__title'>发布同学</Text><View className='detail-seller__row'><Avatar className='detail-seller__avatar' value={product.seller.avatar} /><View className='detail-seller__info'><Text className='detail-seller__name'>{product.seller.nickname || '校园同学'}</Text><Text>{campusConfig.schoolName}</Text><Text>{product.seller.campus || campusConfig.campusName}</Text></View><Badge tone='primary'>校园用户</Badge></View><View className='detail-seller__review' onClick={() => Taro.navigateTo({ url: `/pages/seller-reviews/index?id=${encodeURIComponent(product.seller.id)}` })}><Text>{sellerReviewError ? '信用评分暂不可用' : !sellerReviewSummary ? '正在读取信用评分…' : sellerReviewSummary.reviewCount ? `信用评分 ${sellerReviewSummary.averageRating.toFixed(1)} · ${sellerReviewSummary.reviewCount} 条评价` : '暂无评价'}</Text><Icon name='chevron' size='sm' /></View></View>
       {permissions.canReport && <View className='detail-report'>
         {reportSubmitted ? <Text className='detail-report__done'>已提交举报，感谢你帮助维护校园集市</Text> : <Text className='detail-report__trigger' onClick={() => setReportOpen(value => !value)}>{reportOpen ? '收起举报' : '发现商品有问题？举报'}</Text>}
         {reportOpen && !reportSubmitted && <View className='detail-report__form'>

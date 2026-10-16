@@ -1,0 +1,12 @@
+@use '../../styles/tokens' as t;
+.seller-reviews-content { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+.seller-reviews-summary { display: flex; align-items: center; gap: 22px; padding: 28px; border: 1px solid t.$border; border-radius: t.$radius-card; background: t.$surface; }
+.seller-reviews-summary__score { color: t.$primary-dark; font-size: 66px; font-weight: 800; }
+.seller-reviews-summary__stars { display: block; color: t.$warning; font-size: t.$font-product; }
+.seller-reviews-summary__count { display: block; margin-top: 6px; color: t.$text-secondary; font-size: t.$font-secondary; }
+.seller-reviews-heading { display: block; margin: 30px 0 15px; color: t.$text-primary; font-size: t.$font-section; font-weight: 800; }
+.seller-review-card { margin-bottom: 15px; padding: 24px; border: 1px solid t.$border; border-radius: t.$radius-card; background: t.$surface; }
+.seller-review-card__top { display: flex; justify-content: space-between; gap: 12px; }
+.seller-review-card__stars { color: t.$warning; font-size: t.$font-product; }
+.seller-review-card__time { color: t.$text-tertiary; font-size: t.$font-caption; }
+.seller-review-card__content { display: block; margin-top: 14px; color: t.$text-primary; font-size: t.$font-body; line-height: 1.5; word-break: break-all; }

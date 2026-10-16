@@ -261,3 +261,13 @@
 .admin-card__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 15px; padding-top: 14px; border-top: 1px solid t.$border; }
 .admin-card__actions .ui-button { margin: 0; min-height: 61px; padding: 0 18px; font-size: 20px; }
 .admin-content > .listing-filters { margin-bottom: 20px; }
+
+// Completed order review and seller credit overview
+.order-review-panel { margin: 20px 0; padding: 24px; border: 1px solid t.$border; border-radius: t.$radius-card; background: t.$surface; }
+.order-review-panel__title { display: block; margin-bottom: 14px; color: t.$text-primary; font-size: t.$font-product; font-weight: 800; }
+.order-review-panel__stars { display: block; color: t.$warning; font-size: t.$font-secondary; font-weight: 700; }
+.order-review-panel__content { display: block; margin-top: 12px; color: t.$text-secondary; font-size: t.$font-body; line-height: 1.5; word-break: break-all; }
+.order-review-panel__hint, .order-review-panel__retry { display: block; color: t.$text-secondary; font-size: t.$font-secondary; }
+.order-review-panel__retry { color: t.$primary-dark; }
+.detail-seller__review { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding-top: 17px; border-top: 1px solid t.$border; color: t.$primary-dark; font-size: t.$font-secondary; font-weight: 700; }
+.detail-seller__review .ui-icon { width: 22px; height: 22px; }

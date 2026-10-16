@@ -1,0 +1,11 @@
+@use '../../styles/tokens' as t;
+.review-content { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+.review-product__seller { display: block; margin-top: 8px; color: t.$text-secondary; font-size: t.$font-caption; }
+.review-form { margin: 22px 0; padding: 26px; border: 1px solid t.$border; border-radius: t.$radius-card; background: t.$surface; }
+.review-form__title { display: block; color: t.$text-primary; font-size: t.$font-product; font-weight: 800; }
+.review-form__stars { display: flex; justify-content: space-between; gap: 10px; margin: 22px 0 6px; }
+.review-form__star { flex: 1; text-align: center; color: t.$text-tertiary; font-size: 57px; line-height: 1.3; }
+.review-form__star.is-selected { color: t.$warning; }
+.review-form__hint { display: block; color: t.$text-secondary; font-size: t.$font-secondary; }
+.review-form__input { box-sizing: border-box; width: 100%; min-height: 185px; margin-top: 24px; padding: 18px; border-radius: t.$radius-medium; background: t.$background; color: t.$text-primary; font-size: t.$font-body; }
+.review-form__count { display: block; margin-top: 8px; text-align: right; color: t.$text-tertiary; font-size: t.$font-caption; }

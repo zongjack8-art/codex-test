@@ -121,3 +121,19 @@ export interface MarketOrder {
   completedAt: number | null
   cancelledAt: number | null
 }
+
+export interface SellerReview {
+  rating: number
+  content: string
+  createdAt: number
+}
+
+export interface OrderReviewState {
+  reviewed: boolean
+  review?: SellerReview
+}
+
+export interface SellerReviewSummary {
+  averageRating: number
+  reviewCount: number
+}

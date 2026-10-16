@@ -5,6 +5,7 @@ const campus = require('./campus.json')
 const { createChatHandler } = require('./chat')
 const { createOrderHandler } = require('./orders')
 const { createAdminHandler } = require('./admin')
+const { createReviewHandler } = require('./reviews')
 const {
   AppError, CATEGORIES, MAX_IMAGE_BYTES, fail, cleanText, safeId,
   ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, productStatus, assertStatusTransition, escapeRegExp
@@ -24,6 +25,8 @@ const admins = db.collection('admins')
 const chatActions = new Set(['startConversation', 'listConversations', 'getConversation', 'listMessages', 'sendMessage', 'markConversationRead', 'getUnreadMessageCount'])
 const orderActions = new Set(['createOrder', 'listOrders', 'getOrder', 'confirmOrder', 'completeOrder', 'cancelOrder', 'getOrderUnreadSummary', 'markOrdersRead'])
 const adminActions = new Set(['getAdminStatus', 'getAdminNotificationSummary', 'adminListProducts', 'adminTakeDownProduct', 'adminListReports', 'adminResolveReport'])
+
+const reviewActions = new Set(['createReview', 'getOrderReview', 'getSellerReviewSummary', 'listSellerReviews'])
 
 function identity() {
   const openid = cloud.getWXContext().OPENID
@@ -62,6 +65,7 @@ async function ensureUser(openid) {
 const chat = createChatHandler({ db, users, products, conversations, messages, ensureUser })
 const orderAction = createOrderHandler({ db, users, products, orders, ensureUser })
 const adminAction = createAdminHandler({ db, admins, products, reports, users })
+const reviewAction = createReviewHandler({ db, orders })
 async function hydrate(items) {
   if (!items.length) return []
   const ids = [...new Set(items.map(item => item.sellerId))]
@@ -136,6 +140,7 @@ async function run(action, event) {
   if (chatActions.has(action)) return chat(action, event, openid)
   if (orderActions.has(action)) return orderAction(action, event, openid)
   if (adminActions.has(action)) return adminAction(action, event, openid)
+  if (reviewActions.has(action)) return reviewAction(action, event, openid)
   if (action === 'login') return publicUser(await ensureUser(openid))
   if (action === 'updateProfile') {
     await ensureUser(openid)

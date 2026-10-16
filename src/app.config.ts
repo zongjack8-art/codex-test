@@ -11,6 +11,8 @@ export default defineAppConfig({
     'pages/my-listings/index',
     'pages/orders/index',
     'pages/order-detail/index',
+    'pages/review/index',
+    'pages/seller-reviews/index',
     'pages/admin/index',
     'pages/admin/products/index',
     'pages/admin/reports/index',

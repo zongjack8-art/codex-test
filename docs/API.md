@@ -66,6 +66,10 @@ HTTP 请求中的买家、卖家、发送者、收件人和未读数字段不能
 
 Cloud 模式的订单调用 `market` action：`createOrder`、`listOrders`、`getOrder`、`confirmOrder`、`completeOrder`、`cancelOrder`、`getOrderUnreadSummary`、`markOrdersRead`。后两者分别返回 `{ buyer, seller, total }`，以及根据 `{ role: 'buyer' | 'seller' }` 清除当前 OPENID 对应角色未读并返回 `{ cleared }`；订单列表只返回当前角色的 `unread`，缺失字段视为已读。HTTP 适配层暂未实现，若后续接入，应提供 `POST /me/orders`、`GET /me/orders?role=buyer|seller`、`GET /me/orders/:id`、`GET /me/orders/unread-summary`、`POST /me/orders/read` 和订单确认、完成、取消的 POST 操作。创建请求只提交 `productId`；价格、买卖双方身份和未读归属由服务端读取或计算，订单状态流转由服务端验证。
 
+## 交易评价 CloudBase 接口
+
+`market` 的 `createReview` 接收 `{ orderId, rating, content? }` 并返回 `{ created: true }`；仅已完成订单的真实买家可调用，评分为 1–5 的整数，文字最多 200 字。`getOrderReview` 接收 `{ orderId }`，只允许订单买卖双方读取，返回 `{ reviewed, review?: { rating, content, createdAt } }`。`getSellerReviewSummary` 接收 `{ sellerId }`，返回 `{ averageRating, reviewCount }`；`listSellerReviews` 返回最近最多 20 条 `{ rating, content, createdAt }`。公开评价不包含买家 OPENID。HTTP 适配层如需实现同等功能，应校验真实登录身份、订单状态和订单归属，并保持每单一次的唯一约束。
+
 ## 管理员 CloudBase 接口
 
 当前管理员后台仅支持微信 CloudBase 模式，没有对应 HTTP 服务端。`market` action 包括 `getAdminStatus`（只返回 `{ isAdmin: boolean }`）、`getAdminNotificationSummary`（返回 `{ pendingReports: number }`，仅管理员可调用）、`adminListProducts`、`adminTakeDownProduct`（`{ id, reason }`）、`adminListReports`、`adminResolveReport`（`{ id, resolution: 'takedown' | 'dismiss' }`）。每次请求都由云函数读取真实微信 OPENID；管理员操作检查 `admins` 集合，客户端提供的管理员身份字段不起作用。商品和举报列表第一版最多返回 100 条，详细字段见 [DATABASE.md](DATABASE.md)。

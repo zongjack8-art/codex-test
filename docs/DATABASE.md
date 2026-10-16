@@ -1,8 +1,8 @@
 # 天津师范大学 CloudBase 数据结构
 
-目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports`、`conversations`、`messages`、`orders`、`admins` 八个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
+目标环境：`campusmarket-dev-d7e8qkifecb7d51`。需在控制台手动创建 `users`、`products`、`favorites`、`reports`、`conversations`、`messages`、`orders`、`admins`、`reviews` 九个集合。校园归属以 `cloudfunctions/market/campus.json` 为唯一配置，云函数写入时固定 `school=天津师范大学`，不相信客户端学校字段。金额以人民币元存储，最多两位小数；时间为 Unix 毫秒时间戳。
 
-八个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
+九个集合均使用 `cloudbase/rules/` 中相应的规则，禁止客户端直接读写。`market` 云函数使用服务端 SDK 读写，并从 `getWXContext().OPENID` 取得身份。这里用明确的 `sellerId`、`userId`、`reporterId` 字段；不依赖客户端传入或前端伪造 `_openid`。云数据库 `_id` 用于文档唯一性。
 
 ## users
 
@@ -119,6 +119,20 @@
 
 新订单设 `buyerUnread=false`、`sellerUnread=true`；卖家确认或完成后设 `buyerUnread=true`、`sellerUnread=false`；取消时仅通知另一方。`getOrderUnreadSummary` 和 `markOrdersRead` 都以云函数取得的 OPENID 查询当前用户订单，按买家或卖家角色分别统计和清除。列表仅向前端返回当前角色的 `unread` 布尔值。未读查询沿用下方 `buyerId + createdAt` / `sellerId + createdAt` 索引，在云函数中分批筛选；本功能**无需新增索引或集合**。旧订单未读字段缺失不会产生历史红点。
 
+## reviews
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `_id` | string | 云函数按 `orderId` 计算的 24 字符确定性 ID，配合唯一索引防并发重复 |
+| `orderId`, `productId` | string | 来自已完成订单；客户端只能提交 `orderId` |
+| `buyerId`, `sellerId` | string | 买家为当前真实 OPENID，卖家来自订单；公开接口均不返回买家 OPENID |
+| `rating` | number | 1–5 的整数 |
+| `content` | string | 可空，最多 200 字 |
+| `createdAt` | number | Unix 毫秒时间戳 |
+| `school` | string | 由云函数固定为天津师范大学 |
+
+只有已完成订单的买家能评价一次；订单买卖双方可查看该订单的评价状态。卖家信用汇总与最近 20 条公开评价只读取本校记录，只返回评分、文字和时间。`reviews` 的客户端权限为 `read: false, write: false`，不能直接写库。评价不会修改订单、商品、聊天或支付状态。
+
 ## 索引
 
 在云开发控制台“数据库 → 集合 → 索引管理”建立以下组合索引。`_id` 的默认索引无需重复建。控制台中的升/降序选择与下表一致；查询量较小时先创建至少前五项，后续依据实际查询错误和性能补齐。
@@ -141,6 +155,8 @@
 | `orders` | `buyerId` 升序、`productId` 升序、`status` 升序 | 下单前查询活跃订单 |
 | `orders` | `buyerId` 升序、`createdAt` 降序 | 我买到的 |
 | `orders` | `sellerId` 升序、`createdAt` 降序 | 我卖出的 |
+| `reviews` | `orderId` 升序，**唯一索引** | 每笔订单最多一条评价；需在真实测试前建立 |
+| `reviews` | `sellerId` 升序、`createdAt` 降序 | 卖家信用汇总和最近 20 条评价 |
 
 `conversations._id` 已编码买家和商品，唯一性由数据库默认 `_id` 索引保证，无需另建“买家 + 商品”唯一索引。实际控制台如对某个组合查询提示缺索引，按提示补建，并记录在本表。聊天未读总数分批读取双方会话计数，最多扫描每侧 1000 条；运营规模超过此上限前需改为专用聚合统计。
 
