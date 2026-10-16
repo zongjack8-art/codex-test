@@ -1,6 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { validateProduct, validateProfile, validateReport, assertOwner, favoriteId, incomingImage, escapeRegExp } = require('./security')
+const { validateProduct, validateProfile, validateReport, assertOwner, favoriteId, incomingImage, escapeRegExp, productStatus } = require('./security')
 const campus = require('./campus.json')
 
 const openid = 'user_123'
@@ -18,6 +18,13 @@ test('商品输入只保留白名单字段，不能伪造卖家或状态', () =>
 test('商品写操作拒绝非所有者', () => {
   assert.throws(() => assertOwner({ sellerId: 'another-user' }, openid), error => error.code === 'FORBIDDEN')
   assert.doesNotThrow(() => assertOwner({ sellerId: openid }, openid))
+})
+
+test('旧商品状态与预订状态可安全识别', () => {
+  assert.equal(productStatus(undefined), 'selling')
+  assert.equal(productStatus('active'), 'selling')
+  assert.equal(productStatus('removed'), 'offline')
+  assert.equal(productStatus('reserved'), 'reserved')
 })
 
 test('拒绝非法价格、过长内容和其他用户图片', () => {

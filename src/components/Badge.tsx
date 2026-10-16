@@ -9,7 +9,7 @@ export function Badge({ children, tone = 'neutral', className = '' }: { children
 }
 
 export function StatusBadge({ status }: { status: ProductStatus }) {
-  const labels = { selling: '在售', sold: '已售', offline: '已下架' }
-  const tones: Record<ProductStatus, BadgeTone> = { selling: 'success', sold: 'neutral', offline: 'warning' }
+  const labels: Record<ProductStatus, string> = { selling: '在售', reserved: '交易中', sold: '已售', offline: '已下架' }
+  const tones: Record<ProductStatus, BadgeTone> = { selling: 'success', reserved: 'warning', sold: 'neutral', offline: 'warning' }
   return <Badge tone={tones[status]}>{labels[status]}</Badge>
 }

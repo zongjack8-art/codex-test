@@ -1,5 +1,5 @@
 import { Text, View } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { getCurrentInstance, useDidShow } from '@tarojs/taro'
 import { useRef, useState } from 'react'
 import { Badge } from '../../components/Badge'
 import EmptyState from '../../components/EmptyState'
@@ -11,7 +11,7 @@ import { formatOrderTime, orderStatusLabels, unreadCountLabel } from '../../util
 const emptyUnread: OrderUnreadSummary = { buyer: 0, seller: 0, total: 0 }
 
 export default function OrdersPage() {
-  const [role, setRole] = useState<OrderRole>('buyer')
+  const [role, setRole] = useState<OrderRole>(getCurrentInstance().router?.params?.role === 'seller' ? 'seller' : 'buyer')
   const [orders, setOrders] = useState<MarketOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)

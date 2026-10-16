@@ -4,16 +4,16 @@ import { apiRequest } from './api'
 import { ensureUserSession } from './auth'
 import { cloudCall } from './cloudbase'
 import { getDataMode } from './mode'
-import { getProduct, setProductStatus } from './products'
+import { getProduct, setOrderProductStatus } from './products'
 import { readLocal, writeLocal } from './storage'
 
 const ORDERS_KEY = 'campusmarket.orders.v1'
-type MockOrder = MarketOrder & { buyerUnread?: boolean; sellerUnread?: boolean }
+type MockOrder = MarketOrder & { buyerUnread?: boolean; sellerUnread?: boolean; reservedAt?: number }
 const mockOrders = () => readLocal<MockOrder[]>(ORDERS_KEY, [])
 const saveMockOrders = (orders: MockOrder[]) => writeLocal(ORDERS_KEY, orders)
 const active = (status: MarketOrder['status']) => status === 'pending' || status === 'confirmed'
 const presentMockOrder = (order: MockOrder, role: OrderRole): MarketOrder => {
-  const { buyerUnread, sellerUnread, ...publicOrder } = order
+  const { buyerUnread, sellerUnread, reservedAt, ...publicOrder } = order
   return { ...publicOrder, role, unread: role === 'buyer' ? buyerUnread === true : sellerUnread === true }
 }
 
@@ -57,7 +57,7 @@ export async function createOrder(productId: string): Promise<MarketOrder> {
     productTitle: product.title, productImage: product.images[0] || '', amount: product.price,
     status: 'pending', role: 'buyer', other: { nickname: product.seller.nickname, avatar: product.seller.avatar },
     createdAt: now, updatedAt: now, completedAt: null, cancelledAt: null,
-    buyerUnread: false, sellerUnread: true
+    buyerUnread: false, sellerUnread: true, cancelReason: null
   }
   saveMockOrders([order, ...mockOrders()])
   return presentMockOrder(order, 'buyer')
@@ -84,21 +84,31 @@ export async function changeOrder(id: string, action: 'confirmOrder' | 'complete
   if (action !== 'cancelOrder' && order.role !== 'seller') throw new Error('只有卖家可以操作')
   const next = action === 'confirmOrder' ? 'confirmed' : action === 'completeOrder' ? 'completed' : 'cancelled'
   if (action === 'confirmOrder' && order.status !== 'pending' || action === 'completeOrder' && order.status !== 'confirmed' || action === 'cancelOrder' && !active(order.status)) throw new Error('当前订单状态不支持此操作')
-  if (action !== 'cancelOrder') {
-    const product: Product | null = await getProduct(order.productId)
-    if (!product || product.status !== 'selling' || product.seller.id !== order.sellerId) throw new Error('商品已不在售，无法继续此订单')
-    if (action === 'completeOrder') await setProductStatus(order.productId, 'sold')
-  }
   const now = Date.now()
   const stored = mockOrders().find(item => item.id === id)
   if (!stored) throw new Error('订单不存在')
+  const product: Product | null = await getProduct(order.productId)
+  if (action === 'confirmOrder') {
+    if (!product || product.status !== 'selling' || product.seller.id !== order.sellerId || mockOrders().some(item => item.productId === order.productId && item.status === 'confirmed')) throw new Error('商品已不在售，无法继续此订单')
+    setOrderProductStatus(order.productId, 'selling', 'reserved')
+  } else if (action === 'completeOrder') {
+    if (!product || product.seller.id !== order.sellerId || product.status !== 'reserved' && !(stored.reservedAt == null && product.status === 'selling')) throw new Error('商品未处于交易中，无法完成订单')
+    setOrderProductStatus(order.productId, product.status, 'sold')
+  } else if (order.status === 'confirmed' && product?.status === 'reserved' && product.seller.id === order.sellerId) {
+    setOrderProductStatus(order.productId, 'reserved', 'selling')
+  }
   const notifyBuyer = action !== 'cancelOrder' || order.role === 'seller'
   const updated: MockOrder = {
     ...stored, status: next, updatedAt: now,
+    reservedAt: next === 'confirmed' ? now : stored.reservedAt,
     completedAt: next === 'completed' ? now : order.completedAt,
     cancelledAt: next === 'cancelled' ? now : order.cancelledAt,
+    cancelReason: null,
     buyerUnread: notifyBuyer, sellerUnread: !notifyBuyer
   }
-  saveMockOrders(mockOrders().map(item => item.id === id ? updated : item))
+  saveMockOrders(mockOrders().map(item => item.id === id ? updated : action === 'confirmOrder' && item.productId === order.productId && item.status === 'pending' ? {
+    ...item, status: 'cancelled', cancelReason: 'seller_selected_other_buyer',
+    cancelledAt: now, updatedAt: now, buyerUnread: true, sellerUnread: false
+  } : item))
   return presentMockOrder(updated, order.role)
 }

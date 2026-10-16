@@ -32,12 +32,12 @@
 | `condition` | string | 新旧程度，2–20 字符 |
 | `images` | string[] | 1–3 个经云函数校验路径、大小和文件头后保存的 `images/` 云文件 ID |
 | `location` | string | 校内面交范围，2–80 字符；前端兼容现有 `campus` 字段 |
-| `status` | string | `selling`、`sold`、`offline` |
+| `status` | string | `selling` 在售、`reserved` 交易中、`sold` 已售、`offline` 已下架；旧 `active` 或缺失值按在售处理，旧 `removed` 按已下架处理 |
 | `createdAt`, `updatedAt` | number | 创建和最近修改时间 |
 | `moderationStatus` | string / 缺失 | 管理员下架时为 `blocked`；旧商品缺失视为未封锁 |
 | `moderationReason`, `moderatedAt`, `moderatedBy` | string / number | 管理员下架理由、时间和真实 OPENID |
 
-公共列表只显示本校 `selling` 商品及旧版 `active` 商品，并排除管理员封锁商品；卖家的“我的发布”展示自己的全部状态。管理员封锁后商品改为 `offline`，卖家不能自行重新上架。状态流转固定为 `selling → sold/offline`、`offline → selling`；`sold` 为终态，只能删除。编辑仅允许 `selling/offline`。更新状态、编辑和删除均先校验 `sellerId`。旧商品缺少 `status` 或使用 `active` 时，详情页按在售显示，状态操作按在售处理；缺少 `location`、`createdAt` 时前端使用安全的展示回退，无需清空现有商品。创建限制为每个微信身份每天最多 20 件。删除会清理相关收藏与不再被引用的商品图，但保留聊天会话和消息；若云存储删除失败，写入 `reports` 待处理。
+公共列表显示本校 `selling`、`reserved` 商品及旧版 `active` 商品，并排除管理员封锁商品；`reserved` 带“交易中”标记且不能新增订单、收藏或联系。卖家的“我的发布”展示全部状态。管理员封锁后商品改为 `offline`，卖家不能自行重新上架。普通卖家可将 `selling → sold/offline`、`offline → selling`；订单确认在云函数事务中执行 `selling → reserved`，订单完成执行 `reserved → sold`，已确认订单取消执行 `reserved → selling`。`reserved` 不接受普通卖家手动改状态、编辑或删除，以免破坏进行中的订单。旧商品缺少 `status` 或使用 `active` 时按在售处理；缺少 `location`、`createdAt` 时前端使用安全的展示回退，无需清空现有商品。创建限制为每个微信身份每天最多 20 件。删除会清理相关收藏与不再被引用的商品图，但保留聊天会话和消息；若云存储删除失败，写入 `reports` 待处理。
 
 ## favorites
 
@@ -113,9 +113,11 @@
 | `activeKey` | string | 活跃时为 SHA-256(buyerId:productId)，结束后改为 `closed_<orderId>`；唯一索引防并发重复下单 |
 | `createdAt`, `updatedAt` | number | Unix 毫秒时间戳 |
 | `completedAt`, `cancelledAt` | number / null | 完成和取消时间 |
+| `reservedAt` | number / 缺失 | 新版确认订单时写入；旧版已确认订单缺失时可按原状态完成 |
+| `cancelReason` | string / null | 被卖家选择其他买家而自动关闭时为 `seller_selected_other_buyer` |
 | `buyerUnread`, `sellerUnread` | boolean | 当前买家、卖家各自的站内订单未读状态；旧文档缺少字段时按 `false` 处理 |
 
-只允许买卖双方读取订单。卖家可确认 `pending → confirmed`，卖家可将 `confirmed → completed`，完成时在同一云数据库事务中把商品设为 `sold`。买卖双方可取消 `pending/confirmed → cancelled`；完成或取消后不可继续流转。取消后再次下单会创建新记录，历史订单仍保留。订单完成或商品删除均不清理聊天记录。订单不表示已付款或平台担保。
+只允许买卖双方读取订单。不同买家可对同一在售商品分别创建 `pending`。卖家确认一笔订单时，在同一事务中把商品设为 `reserved`，把该订单改为 `confirmed`，并将该商品其他所有 `pending` 订单改为 `cancelled`、关闭 `activeKey`、设置取消原因与买家未读。创建订单的事务也更新商品文档，使并发创建和确认发生写冲突并重试；同时两个确认请求只能成功一个。已确认订单完成时商品变 `sold`，取消时商品从 `reserved` 恢复 `selling`。旧版 `confirmed` 订单若缺少 `reservedAt` 且商品仍为 `selling`，允许完成；管理员已下架的商品不会因取消被重新上架。完成或取消后不可继续流转，取消后可再次下单，历史订单与聊天记录仍保留。订单不表示已付款或平台担保。
 
 新订单设 `buyerUnread=false`、`sellerUnread=true`；卖家确认或完成后设 `buyerUnread=true`、`sellerUnread=false`；取消时仅通知另一方。`getOrderUnreadSummary` 和 `markOrdersRead` 都以云函数取得的 OPENID 查询当前用户订单，按买家或卖家角色分别统计和清除。列表仅向前端返回当前角色的 `unread` 布尔值。未读查询沿用下方 `buyerId + createdAt` / `sellerId + createdAt` 索引，在云函数中分批筛选；本功能**无需新增索引或集合**。旧订单未读字段缺失不会产生历史红点。
 
@@ -155,6 +157,7 @@
 | `orders` | `buyerId` 升序、`productId` 升序、`status` 升序 | 下单前查询活跃订单 |
 | `orders` | `buyerId` 升序、`createdAt` 降序 | 我买到的 |
 | `orders` | `sellerId` 升序、`createdAt` 降序 | 我卖出的 |
+| `orders` | `productId` 升序、`status` 升序 | 确认订单时查询同商品的全部待确认单并原子取消；**本轮新增，真实联调前在控制台建立** |
 | `reviews` | `orderId` 升序，**唯一索引** | 每笔订单最多一条评价；需在真实测试前建立 |
 | `reviews` | `sellerId` 升序、`createdAt` 降序 | 卖家信用汇总和最近 20 条评价 |
 

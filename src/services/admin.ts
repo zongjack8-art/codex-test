@@ -8,7 +8,7 @@ export interface AdminProduct {
   title: string
   image: string
   price: number
-  status: 'selling' | 'sold' | 'offline'
+  status: 'selling' | 'reserved' | 'sold' | 'offline'
   createdAt: number
   sellerId: string
   sellerNickname: string

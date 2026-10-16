@@ -31,7 +31,7 @@ interface CloudProduct {
 }
 
 function productStatus(status: CloudProduct['status']): ProductStatus {
-  if (status === 'sold' || status === 'offline') return status
+  if (status === 'reserved' || status === 'sold' || status === 'offline') return status
   return status === 'selling' || status === 'active' || !status ? 'selling' : 'offline'
 }
 
@@ -82,7 +82,7 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   }
   const keyword = filters.keyword?.trim().toLowerCase()
   const products = localProducts().filter(product =>
-    product.status === 'selling' &&
+    (product.status === 'selling' || product.status === 'reserved') &&
     (!filters.category || filters.category === 'all' || product.category === filters.category) &&
     (!keyword || `${product.title} ${product.description}`.toLowerCase().includes(keyword))
   )
@@ -122,7 +122,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
   if (getDataMode() === 'cloud') return fromCloud(await cloudCall<CloudProduct>('updateProduct', { id, product: { ...input, location: input.campus } }))
   if (getDataMode() === 'api') return apiRequest<Product>(`/products/${encodeURIComponent(id)}`, 'PATCH', input)
   const previous = ownedLocalProduct(id)
-  if (previous.status === 'sold') throw new Error('已售商品不能再编辑')
+  if (previous.status === 'sold' || previous.status === 'reserved') throw new Error('已售或交易中的商品不能编辑')
   const updated = localProducts().map(item => item.id === id ? { ...item, ...input } : item)
   writeLocal(PRODUCTS_KEY, updated)
   await Promise.all(previous.images.filter(image => !input.images.includes(image)).map(removeMockImage))
@@ -144,10 +144,19 @@ export async function setProductStatus(id: string, status: ProductStatus): Promi
   writeLocal(PRODUCTS_KEY, localProducts().map(product => product.id === id ? { ...product, status } : product))
 }
 
+/** Mock-only order transition; Cloud mode always changes reservation in the market transaction. */
+export function setOrderProductStatus(id: string, expected: ProductStatus, next: ProductStatus): void {
+  if (getDataMode() !== 'mock') throw new Error('商品预订状态必须由云函数修改')
+  const product = localProducts().find(item => item.id === id)
+  if (!product || product.status !== expected) throw new Error('商品状态已变化，请刷新后重试')
+  writeLocal(PRODUCTS_KEY, localProducts().map(item => item.id === id ? { ...item, status: next } : item))
+}
+
 export async function deleteProduct(id: string): Promise<void> {
   if (getDataMode() === 'cloud') { await cloudCall('deleteProduct', { id }); return }
   if (getDataMode() === 'api') { await apiRequest(`/products/${encodeURIComponent(id)}`, 'DELETE'); return }
   const product = ownedLocalProduct(id)
+  if (product.status === 'reserved') throw new Error('交易中的商品不能删除，请先处理订单')
   writeLocal(PRODUCTS_KEY, localProducts().filter(product => product.id !== id))
   writeLocal(FAVORITES_KEY, (await getFavoriteIds()).filter(item => item !== id))
   await Promise.all(product.images.map(removeMockImage))

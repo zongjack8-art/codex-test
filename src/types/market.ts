@@ -1,5 +1,5 @@
 export type CategoryId = 'books' | 'digital' | 'daily' | 'sports' | 'fashion' | 'other'
-export type ProductStatus = 'selling' | 'sold' | 'offline'
+export type ProductStatus = 'selling' | 'reserved' | 'sold' | 'offline'
 
 export interface Seller {
   id: string
@@ -120,6 +120,7 @@ export interface MarketOrder {
   updatedAt: number
   completedAt: number | null
   cancelledAt: number | null
+  cancelReason?: 'seller_selected_other_buyer' | null
 }
 
 export interface SellerReview {

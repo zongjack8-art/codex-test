@@ -122,7 +122,7 @@ async function run(action, event) {
     const category = filters.category && filters.category !== 'all' ? filters.category : undefined
     if (category && !CATEGORIES.has(category)) fail('INVALID_INPUT', '商品分类无效')
     const keyword = filters.keyword ? cleanText(filters.keyword, '关键词', 1, 40) : ''
-    const base = { status: _.in(['selling', 'active']), school: campus.schoolName, ...(category ? { category } : {}) }
+    const base = { status: _.in(['selling', 'active', 'reserved']), school: campus.schoolName, ...(category ? { category } : {}) }
     const regex = keyword ? db.RegExp({ regexp: escapeRegExp(keyword), options: 'i' }) : null
     const condition = regex ? _.or([{ ...base, title: regex }, { ...base, description: regex }]) : base
     const sort = filters.sort === 'priceAsc' ? ['price', 'asc'] : filters.sort === 'priceDesc' ? ['price', 'desc'] : ['createdAt', 'desc']
@@ -259,11 +259,18 @@ async function run(action, event) {
   }
   if (action === 'updateProduct') {
     const old = await ownedProduct(event.id, openid)
-    if (productStatus(old.status) === 'sold') fail('INVALID_STATE', '已售商品不能再编辑')
+    if (productStatus(old.status) === 'sold' || productStatus(old.status) === 'reserved') fail('INVALID_STATE', '已售或交易中的商品不能编辑')
     const data = validateProduct(event.product, openid)
     await verifyStoredImages(data.images)
-    await products.doc(old._id).update({ data: { ...data, updatedAt: Date.now() } })
-    await cleanProductFiles((old.images || []).filter(fileID => !data.images.includes(fileID)), openid, old._id)
+    const previous = await db.runTransaction(async tx => {
+      const live = (await tx.collection('products').doc(old._id).get()).data
+      if (!live) fail('NOT_FOUND', '商品不存在')
+      assertOwner(live, openid)
+      if (productStatus(live.status) === 'sold' || productStatus(live.status) === 'reserved') fail('INVALID_STATE', '已售或交易中的商品不能编辑')
+      await tx.collection('products').doc(old._id).update({ data: { ...data, updatedAt: Date.now() } })
+      return live
+    })
+    await cleanProductFiles((previous.images || []).filter(fileID => !data.images.includes(fileID)), openid, old._id)
     return (await hydrate([await one(products, old._id)]))[0]
   }
   if (action === 'setProductStatus') {
@@ -279,8 +286,15 @@ async function run(action, event) {
     return { status: event.status }
   }
   if (action === 'deleteProduct') {
-    const old = await ownedProduct(event.id, openid)
-    await products.doc(old._id).remove()
+    const id = safeId(event.id)
+    const old = await db.runTransaction(async tx => {
+      const live = (await tx.collection('products').doc(id).get()).data
+      if (!live) fail('NOT_FOUND', '商品不存在')
+      assertOwner(live, openid)
+      if (productStatus(live.status) === 'reserved') fail('INVALID_STATE', '交易中的商品不能删除，请先处理订单')
+      await tx.collection('products').doc(id).remove()
+      return live
+    })
     await favorites.where({ productId: old._id }).remove()
     await cleanProductFiles((old.images || []).filter(fileID => ownImage(fileID, openid, 'product')), openid, old._id)
     return { deleted: true }

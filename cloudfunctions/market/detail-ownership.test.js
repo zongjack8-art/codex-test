@@ -22,8 +22,8 @@ test('买家查看别人的在售商品可以收藏、联系和举报', () => {
   })
 })
 
-test('已售或下架商品不可发起交易；缺少服务端归属结果时不暴露买家操作', () => {
-  for (const status of ['sold', 'offline']) {
+test('交易中、已售或下架商品不可发起交易；缺少服务端归属结果时不暴露买家操作', () => {
+  for (const status of ['reserved', 'sold', 'offline']) {
     const result = detailPermissions({ status, viewerIsSeller: false })
     assert.equal(result.canFavorite, false)
     assert.equal(result.canContact, false)
@@ -62,4 +62,8 @@ test('商品 Service 将云函数计算的归属结果传到详情页', async ()
   const buyerView = await productModule.exports.getProduct('product_1')
   assert.equal(buyerView.viewerIsSeller, false)
   assert.equal(detailPermissions(buyerView).canContact, true)
+  remote.status = 'reserved'
+  const reservedView = await productModule.exports.getProduct('product_1')
+  assert.equal(reservedView.status, 'reserved')
+  assert.equal(detailPermissions(reservedView).canContact, false)
 })

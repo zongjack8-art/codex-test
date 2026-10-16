@@ -4,15 +4,15 @@
 
 ## 按顺序操作
 
-1. **取得分支代码。** 在电脑上打开终端：`git clone https://github.com/zongjack8-art/codex-test.git`（已有仓库则进入仓库执行 `git fetch origin`），然后执行 `git switch feature/campusmarket-reviews`。如果本地尚无该分支，先执行 `git switch -c feature/campusmarket-reviews --track origin/feature/campusmarket-reviews`。确认 `git branch --show-current` 输出该分支。
+1. **取得分支代码。** 在电脑上打开终端：`git clone https://github.com/zongjack8-art/codex-test.git`（已有仓库则进入仓库执行 `git fetch origin`），然后执行 `git switch feature/campusmarket-order-reservation`。如果本地尚无该分支，先执行 `git switch -c feature/campusmarket-order-reservation --track origin/feature/campusmarket-order-reservation`。确认 `git branch --show-current` 输出该分支。
 2. **安装依赖并检查 Mock 版。** 使用 Node.js 20+ 和 pnpm 11，依次执行 `pnpm install --store-dir .pnpm-store`、`pnpm test:cloud`、`pnpm typecheck`、`pnpm build:weapp`、`pnpm build:h5`。不设置变量时就是 Mock，能先确认 UI 和本地数据仍正常。
 3. **导入微信开发者工具。** 打开“项目 → 导入项目”，选择仓库根目录。`project.config.json` 的 `miniprogramRoot` 已是 `dist/weapp/`，并已填写项目 AppID；在工具中核对它与云环境关联的小程序 AppID 一致。确认首页仍为 Mock，并能看到天津师范大学文案。
 4. **核对云开发环境并关联 AppID。** 在微信开发者工具“云开发”面板选择已有的 `campusmarket-dev`；在环境设置中核对 envId 是 `campusmarket-dev-d7e8qkifecb7d51`。到云开发控制台“环境配置 → 安全配置 → 小程序关联”确认当前小程序 AppID 已关联此环境，未关联则先关联。仓库默认 envId 位于 `cloudfunctions/market/campus.json` 的 `cloudEnvId`；若控制台 ID 不同，以控制台为准，可在构建时用 `TARO_APP_CLOUDBASE_ENV_ID` 覆盖，或修改该配置后再构建。
 5. **创建数据库集合。** 在该环境的“数据库/集合”中逐一核对 `users`、`products`、`favorites`、`reports`、`conversations`、`messages`、`orders`、`admins`，再新建 `reviews`，名称与大小写完全一致。已有集合保留原数据，本轮需核对 `admins` 并新增 `reviews`。第一次微信登录会自动创建 `users` 文档；Mock 聊天不会上传。
 6. **设置数据库安全规则。** 对九个集合分别进入“权限设置/安全规则”，使用 `cloudbase/rules/` 下对应同名 JSON 的内容。九个集合均为 `read: false, write: false`，即客户端不能直接读写；`market` 云函数通过服务端 SDK 操作。尤其 `admins` 不得允许客户端读写。不要选择“所有用户可读写”。保存后等待规则生效，并在控制台检查每个集合都已应用。
-7. **建立常用索引。** 在控制台的“索引管理”中按 [DATABASE.md](DATABASE.md) 的索引表添加。保留已有索引；`orders` 必须建立 `activeKey` 升序**唯一索引**，以及 `buyerId + productId + status`、`buyerId + createdAt`、`sellerId + createdAt` 组合索引。订单未读提醒沿用后两个角色查询索引。`reviews` 需创建 `orderId` 升序唯一索引与 `sellerId + createdAt` 组合索引；同时由固定 `_id` 防止并发重复评价。等待索引创建完成后再测试下单。
+7. **建立常用索引。** 在控制台的“索引管理”中按 [DATABASE.md](DATABASE.md) 的索引表添加。保留已有索引；`orders` 必须建立 `activeKey` 升序**唯一索引**，以及 `buyerId + productId + status`、`buyerId + createdAt`、`sellerId + createdAt` 组合索引。**本轮还需新增 `orders` 的 `productId` 升序、`status` 升序组合索引**，供卖家确认订单时查询并自动取消同商品其他待确认单；现有以 `buyerId` 开头的组合索引无法高效支持这一查询。订单未读提醒沿用两个角色查询索引。`reviews` 需创建 `orderId` 升序唯一索引与 `sellerId + createdAt` 组合索引；同时由固定 `_id` 防止并发重复评价。等待索引创建完成后再测试多人下单。
 8. **设置云存储规则。** 在该环境“云存储 → 权限设置/安全规则”粘贴 `cloudbase/rules/storage.json`。它只允许登录用户在 `incoming/` 上传符合命名格式、不超过 5 MB 的临时文件，且资源归属与当前微信身份一致；正式 `images/` 和 `avatars/` 只由云函数写入。当前云函数校验路径、文件大小和 JPEG/PNG/WebP 文件头，按实际格式保存，未进行重编码或元数据清除。不要改成全员可写。若控制台提供临时文件生命周期清理，给 `incoming/` 设定过期清理，避免未完成上传长期占用空间。
-9. **部署云函数。** 回到微信开发者工具，确认“云函数根目录”为仓库的 `cloudfunctions/`。右键 `cloudfunctions/market`，选择“上传并部署：云端安装依赖”，目标环境选 `campusmarket-dev`；若旧版 `market` 已部署，这一步要重新部署本分支版本。本分支云函数包含管理员权限校验、商品封锁规则与交易评价 action。云函数使用 Node.js 20，依赖 `wx-server-sdk`；云端安装依赖不可跳过。部署完成后在云开发控制台确认 `market` 状态正常，并可查看日志。不要把整个仓库当成单个函数上传。
+9. **部署云函数。** 回到微信开发者工具，确认“云函数根目录”为仓库的 `cloudfunctions/`。右键 `cloudfunctions/market`，选择“上传并部署：云端安装依赖”，目标环境选 `campusmarket-dev`；若旧版 `market` 已部署，这一步要重新部署本分支版本。本分支 `market` 包含管理员、评价及新的商品预订事务逻辑；**新索引建好后**再部署并测试。云函数使用 Node.js 20，依赖 `wx-server-sdk`；云端安装依赖不可跳过。部署完成后在云开发控制台确认 `market` 状态正常，并可查看日志。不要把整个仓库当成单个函数上传。
 10. **构建 Cloud 版。** 在仓库根目录运行 `TARO_APP_DATA_SOURCE=cloud pnpm build:weapp`。PowerShell 用 `$env:TARO_APP_DATA_SOURCE='cloud'; pnpm build:weapp`。默认 envId 已配置；如需覆盖，Bash 还可加 `TARO_APP_CLOUDBASE_ENV_ID=控制台环境ID`，PowerShell 先设置 `$env:TARO_APP_CLOUDBASE_ENV_ID='控制台环境ID'`。`wx.cloud.init` 首次使用时初始化一次。回到微信开发者工具重新编译，确认编译的是新的 `dist/weapp/`。
 11. **验证微信身份。** 用第一个微信账号预览，进入“我的”。应显示微信用户状态，`users` 集合出现一条新文档；其 `_id` 对应云函数 `getWXContext().OPENID`，`school` 为“天津师范大学”。编辑昵称、头像、校内范围和简介并保存，再检查这条文档更新，且 `createdAt` 不变、`updatedAt` 更新。不要求填写手机号、学号或真实姓名。
 12. **验证商品与图片。** 用第一个账号发布含 1–3 张 JPEG/PNG/WebP 实物图的商品。发布后在 `products` 检查 `sellerId` 是该账号 OPENID、`school` 正确、`status=selling`、`images` 为 `cloud://` 文件 ID。在云存储检查 `images/<openid>/` 有相应格式的文件，`incoming/<openid>/` 的已完成临时文件被清理。用首页、分类、搜索和详情查看该商品；再测试编辑、下架、重新上架、标记已售和删除。已售后只可删除；编辑移除/删除后检查旧图片是否清理；若失败，查看 `reports` 中 `type=image_cleanup` 记录与函数日志。
@@ -49,3 +49,11 @@
 3. 在 `reviews` 的索引管理创建 `orderId` 升序**唯一索引**和 `sellerId` 升序、`createdAt` 降序组合索引。新集合为空时即可创建，等待索引构建完成。
 4. 右键重新部署 `cloudfunctions/market`，选择“上传并部署：云端安装依赖”，确认目标环境为 `campusmarket-dev`。
 5. 使用两个不同微信账号完成一笔订单。买家进入已完成订单，点“评价卖家”，选择星级并提交。检查 `reviews` 只有一条，`buyerId`、`sellerId`、`productId`、`school` 来自服务端，商品详情显示卖家信用与评价列表。重复提交应被拒绝；卖家和第三人不能替买家评价，第三人也不能查看订单评价状态。真机与云端验证完成前，不要把本地构建视为部署成功。
+
+## 多人下单与商品预订：电脑端待验证
+
+1. 检出 `feature/campusmarket-order-reservation`，保留现有集合与数据。在 CloudBase 控制台给 `orders` 新增 `productId` 升序、`status` 升序组合索引，等待构建完成；**不需要新建集合**。
+2. 重新部署本分支的 `cloudfunctions/market`（云端安装依赖），运行 `TARO_APP_DATA_SOURCE=cloud pnpm build:weapp` 并在微信开发者工具重新编译。旧版前端/云函数不要与新版混用。
+3. 用三个不同买家账号对同一件 `selling` 商品分别点“我想要”，确认生成三笔不同的 `pending` 订单。卖家确认其中一笔后，检查商品 `status=reserved`、只有该笔 `confirmed`；其他两笔自动 `cancelled`，`cancelReason=seller_selected_other_buyer`、`buyerUnread=true`、`sellerUnread=false`、`activeKey=closed_<订单ID>`。两个买家应看到订单未读红点和清晰的关闭原因。
+4. 确认商品在首页/分类仍带“交易中”标记，详情不可新增订单或联系卖家；卖家不能编辑或手动改交易中商品。卖家完成已确认订单后商品应变 `sold`。另用测试商品取消已确认订单，检查商品恢复 `selling`，原先自动取消的买家可以重新下单。聊天和评价历史保留。
+5. 同时快速点击确认两笔不同待确认订单，最终只能有一笔 `confirmed`。再用旧版已确认订单验证兼容：若商品仍为 `selling` 且订单没有 `reservedAt`，仍应能正常完成。这里是人工云端验证清单，仓库构建不代表真实环境已部署。

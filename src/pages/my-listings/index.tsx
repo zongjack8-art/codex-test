@@ -12,6 +12,7 @@ import { formatProductTime } from '../../utils/format'
 const filters: { label: string; status: ProductStatus | 'all' }[] = [
   { label: '全部', status: 'all' },
   { label: '在售', status: 'selling' },
+  { label: '交易中', status: 'reserved' },
   { label: '已售', status: 'sold' },
   { label: '已下架', status: 'offline' }
 ]
@@ -61,7 +62,9 @@ export default function MyListingsPage() {
 
   const showMore = async (product: Product) => {
     if (pendingRef.current) return
-    const actions: { label: string; run: () => Promise<void> }[] = product.status === 'selling'
+    const actions: { label: string; run: () => Promise<void> }[] = product.status === 'reserved'
+      ? [{ label: '查看我的订单', run: async () => { await Taro.navigateTo({ url: '/pages/orders/index?role=seller' }) } }]
+      : product.status === 'selling'
       ? [{ label: '标记已售', run: () => update(product, 'sold') }, { label: '下架商品', run: () => update(product, 'offline') }, { label: '删除商品', run: () => remove(product) }]
       : product.status === 'sold'
         ? [{ label: '删除商品', run: () => remove(product) }]
@@ -81,7 +84,7 @@ export default function MyListingsPage() {
       <View className='results-bar results-bar--single'><Text>{loading ? '正在整理你的好物…' : statusFilter === 'all' ? `共发布 ${products.length} 件` : `${filters.find(item => item.status === statusFilter)?.label} · ${visible.length} 件`}</Text></View>
       {loading ? <View className='listing-skeleton'><View /><View /></View> : loadError ? <EmptyState kind='error' title='暂时没能加载发布' description={loadError} action='重试' onAction={load} /> : visible.length ? visible.map(product => <View className={`listing-card ${pendingId === product.id ? 'listing-card--pending' : ''}`} key={product.id}>
         <View className='listing-card__main' onClick={() => Taro.navigateTo({ url: `/pages/detail/index?id=${encodeURIComponent(product.id)}` })}><ProductPhoto src={product.images[0]} className='listing-card__photo' /><View className='listing-card__info'><Text className='listing-card__title'>{product.title}</Text><View className='listing-card__meta'><StatusBadge status={product.status} />{product.moderationStatus === 'blocked' && <Badge tone='danger'>管理员已下架</Badge>}<Text>{formatProductTime(product.createdAt)}</Text></View><Text className='price'><Text className='price__currency'>¥</Text>{product.price}</Text></View></View>
-        <View className='listing-card__footer'><View className='listing-card__location'><Icon name='pin' size='sm' /><Text>{product.campus}</Text></View><View className='listing-card__actions'>{product.status !== 'sold' && <Text onClick={() => !pendingRef.current && Taro.navigateTo({ url: `/pages/publish/index?id=${encodeURIComponent(product.id)}` })}>编辑</Text>}<View onClick={() => showMore(product)}><Icon name='more' size='sm' /><Text>更多操作</Text></View></View></View>
+        <View className='listing-card__footer'><View className='listing-card__location'><Icon name='pin' size='sm' /><Text>{product.campus}</Text></View><View className='listing-card__actions'>{product.status !== 'sold' && product.status !== 'reserved' && <Text onClick={() => !pendingRef.current && Taro.navigateTo({ url: `/pages/publish/index?id=${encodeURIComponent(product.id)}` })}>编辑</Text>}<View onClick={() => showMore(product)}><Icon name='more' size='sm' /><Text>更多操作</Text></View></View></View>
       </View>) : <EmptyState kind={statusFilter === 'sold' ? 'sold' : 'listings'} title={products.length ? '这里还没有商品' : '还没有发布过好物'} description={products.length ? '切换状态，看看其他好物' : '去发布第一件闲置吧'} action={products.length ? '查看全部' : '去发布'} onAction={products.length ? () => setStatusFilter('all') : () => Taro.reLaunch({ url: '/pages/publish/index' })} />}
     </View>
   </View>

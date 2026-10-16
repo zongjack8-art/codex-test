@@ -7,7 +7,7 @@ class AppError extends Error {
 
 const CATEGORIES = new Set(['books', 'digital', 'daily', 'sports', 'fashion', 'other'])
 const STATUSES = new Set(['selling', 'sold', 'offline'])
-const STATUS_TRANSITIONS = { selling: new Set(['sold', 'offline']), offline: new Set(['selling']), sold: new Set() }
+const STATUS_TRANSITIONS = { selling: new Set(['sold', 'offline']), reserved: new Set(), offline: new Set(['selling']), sold: new Set() }
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const REPORT_REASONS = new Set(['prohibited', 'misleading', 'fraud', 'other'])
 
@@ -97,8 +97,8 @@ function assertOwner(product, openid) {
   if (!product || product.sellerId !== openid) fail('FORBIDDEN', '只能操作自己发布的商品')
 }
 
-// Earlier products may not have a status, or may use the old "active" name.
-function productStatus(value) { return value === 'active' || !value ? 'selling' : value }
+// Earlier products may have no status or use the old active/removed names.
+function productStatus(value) { return value === 'active' || !value ? 'selling' : value === 'removed' ? 'offline' : value }
 function assertStatusTransition(current, next) {
   if (!STATUSES.has(next)) fail('INVALID_INPUT', '商品状态无效')
   if (!STATUS_TRANSITIONS[productStatus(current)]?.has(next)) fail('INVALID_STATE', '当前商品状态不支持此操作')

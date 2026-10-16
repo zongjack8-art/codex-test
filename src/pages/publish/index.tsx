@@ -52,7 +52,7 @@ export default function PublishPage() {
       const [product, session] = await Promise.all([getProduct(id), getDataMode() === 'api' ? Promise.resolve(null) : ensureUserSession()])
       if (!product) { setEditError('商品不存在或已被删除'); return }
       if (session && product.seller.id !== session.user.id) { setEditError('只能编辑自己发布的商品'); return }
-      if (product.status === 'sold') { setEditError('已售商品不能再编辑'); return }
+      if (product.status === 'sold' || product.status === 'reserved') { setEditError('已售或交易中的商品不能编辑'); return }
       setTitle(product.title); setDescription(product.description); setPrice(String(product.price))
       setOriginalPrice(product.originalPrice ? String(product.originalPrice) : '')
       setCategory(product.category); setCondition(product.condition); setCampus(product.campus); setImages(product.images)

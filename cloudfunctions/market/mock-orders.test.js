@@ -21,7 +21,7 @@ test('Mock 买家订单可创建、持久化、阻止重复；取消后保留历
   const service = loadTS('services/orders.ts', {
     '../data/mock': { demoUser: { id: 'demo-me' } },
     './api': {}, './auth': {}, './cloudbase': {}, './mode': { getDataMode: () => 'mock' },
-    './products': { getProduct: async () => product, setProductStatus: async status => { product.status = status } },
+    './products': { getProduct: async () => product, setOrderProductStatus: (_id, expected, next) => { assert.equal(product.status, expected); product.status = next } },
     './storage': { readLocal: (key, fallback) => storage.get(key) ?? fallback, writeLocal: (key, value) => storage.set(key, value) }
   })
   const created = await service.createOrder('p1')
@@ -54,7 +54,7 @@ test('Mock 未读按买卖角色持久化，旧订单缺失字段不会显示红
   const service = loadTS('services/orders.ts', {
     '../data/mock': { demoUser },
     './api': {}, './auth': {}, './cloudbase': {}, './mode': { getDataMode: () => 'mock' },
-    './products': { getProduct: async () => product, setProductStatus: async (_id, status) => { product.status = status } },
+    './products': { getProduct: async () => product, setOrderProductStatus: (_id, expected, next) => { assert.equal(product.status, expected); product.status = next } },
     './storage': { readLocal: (key, fallback) => storage.get(key) ?? fallback, writeLocal: (key, value) => storage.set(key, value) }
   })
   const created = await service.createOrder('p1')
@@ -89,7 +89,7 @@ test('Mock 取消订单时只提醒另一方', async () => {
   const service = loadTS('services/orders.ts', {
     '../data/mock': { demoUser },
     './api': {}, './auth': {}, './cloudbase': {}, './mode': { getDataMode: () => 'mock' },
-    './products': { getProduct: async () => product, setProductStatus: async () => {} },
+    './products': { getProduct: async () => product, setOrderProductStatus: () => {} },
     './storage': { readLocal: (key, fallback) => storage.get(key) ?? fallback, writeLocal: (key, value) => storage.set(key, value) }
   })
   const first = await service.createOrder('p1')
@@ -104,4 +104,32 @@ test('Mock 取消订单时只提醒另一方', async () => {
   demoUser.id = 'buyer'
   assert.equal((await service.getOrderUnreadSummary()).buyer, 1)
   assert.equal((await service.getOrder(second.id)).unread, true)
+})
+
+test('Mock 多买家预订会取消其他待确认单，并在取消确认后允许重新下单', async () => {
+  const storage = new Map()
+  const demoUser = { id: 'buyerA' }
+  const product = { id: 'p1', title: '闲置教材', price: 22, status: 'selling', images: [], seller: { id: 'seller', nickname: '小卖', avatar: '卖' } }
+  const service = loadTS('services/orders.ts', {
+    '../data/mock': { demoUser },
+    './api': {}, './auth': {}, './cloudbase': {}, './mode': { getDataMode: () => 'mock' },
+    './products': { getProduct: async () => product, setOrderProductStatus: (_id, expected, next) => { assert.equal(product.status, expected); product.status = next } },
+    './storage': { readLocal: (key, fallback) => storage.get(key) ?? fallback, writeLocal: (key, value) => storage.set(key, value) }
+  })
+  const first = await service.createOrder('p1')
+  demoUser.id = 'buyerB'
+  const second = await service.createOrder('p1')
+  demoUser.id = 'seller'
+  await service.changeOrder(first.id, 'confirmOrder')
+  assert.equal(product.status, 'reserved')
+  assert.equal((await service.listOrders('seller')).filter(item => item.status === 'confirmed').length, 1)
+  demoUser.id = 'buyerB'
+  assert.equal((await service.getOrder(second.id)).cancelReason, 'seller_selected_other_buyer')
+  assert.equal((await service.getOrderUnreadSummary()).buyer, 1)
+  await assert.rejects(service.createOrder('p1'), /无法发起订单/)
+  demoUser.id = 'buyerA'
+  await service.changeOrder(first.id, 'cancelOrder')
+  assert.equal(product.status, 'selling')
+  demoUser.id = 'buyerB'
+  assert.equal((await service.createOrder('p1')).status, 'pending')
 })

@@ -23,11 +23,11 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 
 | 方法与路径 | 说明 | 请求/响应 |
 | --- | --- | --- |
-| `GET /products` | 查询在售商品 | 可选 `keyword`、`category`、`sort=newest/priceAsc/priceDesc`；返回 `Product[]` |
+| `GET /products` | 查询在售和交易中商品 | 可选 `keyword`、`category`、`sort=newest/priceAsc/priceDesc`；返回 `Product[]`，`reserved` 带“交易中”状态 |
 | `GET /products/:id` | 商品详情 | 返回 `Product`，不存在返回 404 |
 | `POST /products` | 发布商品 | 请求 `ProductInput`；返回新建 `Product` |
 | `GET /me/products` | 我的发布 | 返回当前用户全部状态的 `Product[]` |
-| `PATCH /products/:id` | 编辑商品或更新状态 | 只允许卖家操作；在售可售出或下架，下架可重新上架，已售不可编辑或改状态 |
+| `PATCH /products/:id` | 编辑商品或更新状态 | 只允许卖家操作；在售可售出或下架，下架可重新上架，交易中与已售不可编辑或手动改状态 |
 | `DELETE /products/:id` | 删除商品 | 只允许卖家操作；保留已有聊天记录，成功返回 `{ "data": null }` |
 
 用户资料接口：`GET /me` 返回当前用户；`PATCH /me` 接收昵称、头像、常用校内范围和简介并返回更新后的用户。学校由服务端固定为天津师范大学，不能由客户端修改。HTTP 服务端必须自行验证 Bearer 令牌及资源所有权。
@@ -65,6 +65,8 @@ HTTP 请求中的买家、卖家、发送者、收件人和未读数字段不能
 ## 订单
 
 Cloud 模式的订单调用 `market` action：`createOrder`、`listOrders`、`getOrder`、`confirmOrder`、`completeOrder`、`cancelOrder`、`getOrderUnreadSummary`、`markOrdersRead`。后两者分别返回 `{ buyer, seller, total }`，以及根据 `{ role: 'buyer' | 'seller' }` 清除当前 OPENID 对应角色未读并返回 `{ cleared }`；订单列表只返回当前角色的 `unread`，缺失字段视为已读。HTTP 适配层暂未实现，若后续接入，应提供 `POST /me/orders`、`GET /me/orders?role=buyer|seller`、`GET /me/orders/:id`、`GET /me/orders/unread-summary`、`POST /me/orders/read` 和订单确认、完成、取消的 POST 操作。创建请求只提交 `productId`；价格、买卖双方身份和未读归属由服务端读取或计算，订单状态流转由服务端验证。
+
+同一商品可有不同买家的多笔 `pending` 订单。`confirmOrder` 在事务中将商品设为 `reserved` 并自动取消其他 `pending`；这些订单的 `cancelReason=seller_selected_other_buyer`，仅其买家收到未读提醒。`reserved` 不接受新订单；完成变 `sold`，已确认订单取消则恢复 `selling`。旧版已确认订单在商品仍为 `selling` 时继续可完成。
 
 ## 交易评价 CloudBase 接口
 

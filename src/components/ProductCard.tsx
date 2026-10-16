@@ -9,7 +9,7 @@ import ProductPhoto from './ProductPhoto'
 export default function ProductCard({ product, compact = false, favorite = false, onFavorite }: { product: Product; compact?: boolean; favorite?: boolean; onFavorite?: (product: Product) => void }) {
   return <View className={`product-card ${compact ? 'product-card--compact' : ''}`} onClick={() => Taro.navigateTo({ url: `/pages/detail/index?id=${encodeURIComponent(product.id)}` })}>
     <ProductPhoto src={product.images[0]} className='product-card__photo' />
-    <View className='product-card__floating'><Badge tone='primary'>{product.condition}</Badge></View>
+    <View className='product-card__floating'><Badge tone='primary'>{product.condition}</Badge>{product.status === 'reserved' && <Badge tone='warning'>交易中</Badge>}</View>
     {onFavorite && <View className={`product-card__favorite ${favorite ? 'is-active' : ''}`} onClick={event => { event.stopPropagation(); onFavorite(product) }}><Icon name='heart' size='sm' /></View>}
     <View className='product-card__body'>
       <Text className='product-card__title'>{product.title}</Text>

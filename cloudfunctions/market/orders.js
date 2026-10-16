@@ -22,6 +22,7 @@ function createOrderHandler({ db, users, products, orders, ensureUser }) {
       productTitle: order.productTitle, productImage: order.productImage || '', amount: order.amount,
       status: order.status, createdAt: order.createdAt, updatedAt: order.updatedAt,
       completedAt: order.completedAt || null, cancelledAt: order.cancelledAt || null,
+      cancelReason: order.cancelReason || null,
       role: order.buyerId === openid ? 'buyer' : 'seller',
       unread: order.buyerId === openid ? order.buyerUnread === true : order.sellerUnread === true,
       other: { nickname: person?.nickname || '校园同学', avatar: person?.avatar || '同' }
@@ -60,11 +61,17 @@ function createOrderHandler({ db, users, products, orders, ensureUser }) {
         await db.runTransaction(async tx => {
           const live = await document(tx, 'products', productId)
           if (!live || (live.school && live.school !== campus.schoolName) || !live.sellerId || !Number.isFinite(live.price) || live.price <= 0 || live.sellerId === openid || productStatus(live.status) !== 'selling') fail('INVALID_STATE', '商品状态已变化，请刷新后重试')
+          // Older confirmed orders may predate the reserved product status.
+          const confirmed = (await tx.collection('orders').where({ productId, status: 'confirmed' }).limit(1).get()).data
+          if (confirmed.length) fail('INVALID_STATE', '这件商品已有确认中的订单')
+          // Both placing and confirming an order write this document. A concurrent
+          // confirmation therefore conflicts and retries instead of missing a new pending order.
+          await tx.collection('products').doc(productId).update({ data: { updatedAt: now } })
           await tx.collection('orders').add({ data: {
             _id: id, productId, buyerId: openid, sellerId: live.sellerId,
             productTitle: live.title, productImage: live.images?.[0] || '', amount: live.price,
             activeKey: key, status: 'pending', createdAt: now, updatedAt: now,
-            completedAt: null, cancelledAt: null, buyerUnread: false, sellerUnread: true
+            completedAt: null, cancelledAt: null, cancelReason: null, buyerUnread: false, sellerUnread: true
           } })
         })
       } catch (error) {
@@ -111,19 +118,47 @@ function createOrderHandler({ db, users, products, orders, ensureUser }) {
         const now = Date.now()
         if (action === 'cancelOrder') {
           if (!activeStatuses.includes(order.status)) fail('INVALID_STATE', '当前订单不能取消')
+          if (order.status === 'confirmed') {
+            const product = await document(tx, 'products', order.productId)
+            // A legacy confirmed order may still have a selling product. Never reopen
+            // an offline product, especially one taken down by an administrator.
+            if (product?.sellerId === order.sellerId && productStatus(product.status) === 'reserved') {
+              await tx.collection('products').doc(order.productId).update({ data: { status: 'selling', updatedAt: now } })
+            }
+          }
           await tx.collection('orders').doc(id).update({ data: {
             status: 'cancelled', activeKey: `closed_${id}`, cancelledAt: now, updatedAt: now,
-            buyerUnread: order.sellerId === openid, sellerUnread: order.buyerId === openid
+            cancelReason: null, buyerUnread: order.sellerId === openid, sellerUnread: order.buyerId === openid
           } })
           return
         }
         const expected = action === 'confirmOrder' ? 'pending' : 'confirmed'
         if (order.status !== expected) fail('INVALID_STATE', '当前订单状态不支持此操作')
         const product = await document(tx, 'products', order.productId)
-        if (!product || product.sellerId !== order.sellerId || productStatus(product.status) !== 'selling') fail('INVALID_STATE', '商品已不在售，无法继续此订单')
+        const status = productStatus(product?.status)
+        if (!product || product.sellerId !== order.sellerId) fail('INVALID_STATE', '商品已不可交易')
         if (action === 'confirmOrder') {
-          await tx.collection('orders').doc(id).update({ data: { status: 'confirmed', buyerUnread: true, sellerUnread: false, updatedAt: now } })
+          if (status !== 'selling' || product.moderationStatus === 'blocked') fail('INVALID_STATE', '商品已不在售，无法确认订单')
+          const confirmed = (await tx.collection('orders').where({ productId: order.productId, status: 'confirmed' }).limit(1).get()).data
+          if (confirmed.length) fail('INVALID_STATE', '这件商品已有确认中的订单')
+          const pending = []
+          for (let offset = 0; ; offset += 100) {
+            const batch = (await tx.collection('orders').where({ productId: order.productId, status: 'pending' }).skip(offset).limit(100).get()).data
+            pending.push(...batch)
+            if (batch.length < 100) break
+          }
+          await tx.collection('products').doc(order.productId).update({ data: { status: 'reserved', updatedAt: now } })
+          await tx.collection('orders').doc(id).update({ data: { status: 'confirmed', reservedAt: now, buyerUnread: true, sellerUnread: false, updatedAt: now } })
+          for (const other of pending) {
+            if (other._id === id) continue
+            await tx.collection('orders').doc(other._id).update({ data: {
+              status: 'cancelled', activeKey: `closed_${other._id}`, cancelReason: 'seller_selected_other_buyer',
+              cancelledAt: now, updatedAt: now, buyerUnread: true, sellerUnread: false
+            } })
+          }
         } else {
+          // Orders confirmed before reservation was introduced have no reservedAt.
+          if (status !== 'reserved' && !(order.reservedAt == null && status === 'selling')) fail('INVALID_STATE', '商品未处于交易中，无法完成订单')
           await tx.collection('products').doc(order.productId).update({ data: { status: 'sold', updatedAt: now } })
           await tx.collection('orders').doc(id).update({ data: { status: 'completed', activeKey: `closed_${id}`, completedAt: now, buyerUnread: true, sellerUnread: false, updatedAt: now } })
         }

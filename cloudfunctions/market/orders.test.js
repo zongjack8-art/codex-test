@@ -8,6 +8,8 @@ function fixture() {
   const rows = {
     users: [
       { _id: 'buyer', nickname: '小买', avatar: '买' },
+      { _id: 'buyerB', nickname: '小乙', avatar: '乙' },
+      { _id: 'buyerC', nickname: '小丙', avatar: '丙' },
       { _id: 'seller', nickname: '小卖', avatar: '卖' },
       { _id: 'outsider', nickname: '路人', avatar: '路' }
     ],
@@ -26,6 +28,7 @@ function fixture() {
     if (expected?.op === 'neq') return row[key] !== expected.value
     return row[key] === expected
   })
+  let previousTransaction = Promise.resolve()
   const db = { command, collection(name) {
     if (!rows[name]) throw new Error(`Unknown collection ${name}`)
     return {
@@ -54,9 +57,14 @@ function fixture() {
       }
     }
   }, async runTransaction(callback) {
+    const previous = previousTransaction
+    let release
+    previousTransaction = new Promise(resolve => { release = resolve })
+    await previous
     const snapshot = structuredClone(rows)
     try { return await callback({ collection: name => db.collection(name) }) }
     catch (error) { for (const name of Object.keys(rows)) rows[name] = snapshot[name]; throw error }
+    finally { release() }
   } }
   const directionValue = (a, b, direction) => direction === 'desc' ? (b || 0) - (a || 0) : (a || 0) - (b || 0)
   const cloud = { DYNAMIC_CURRENT_ENV: 'test', init() {}, database() { return db }, getWXContext() { return { OPENID: openid } } }
@@ -242,4 +250,100 @@ test('同一账号同时是买家和卖家时，标记一侧已读不清另一�
   assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 0, seller: 1, total: 1 })
   assert.equal((await fx.main({ action: 'markOrdersRead', role: 'seller' })).data.cleared, 1)
   assert.deepEqual((await fx.main({ action: 'getOrderUnreadSummary' })).data, { buyer: 0, seller: 0, total: 0 })
+})
+
+test('三个买家可分别待确认；卖家只选一人后商品预订并自动关闭其他订单', async () => {
+  const fx = fixture()
+  const ids = []
+  for (const buyer of ['buyer', 'buyerB', 'buyerC']) {
+    fx.setUser(buyer)
+    const created = await fx.main({ action: 'createOrder', productId: 'p1' })
+    assert.equal(created.data.status, 'pending')
+    ids.push(created.data.id)
+  }
+  fx.setUser('seller')
+  assert.equal((await fx.main({ action: 'getOrderUnreadSummary' })).data.seller, 3)
+  assert.equal((await fx.main({ action: 'setProductStatus', id: 'p1', status: 'reserved' })).error.code, 'INVALID_INPUT')
+  const selected = await fx.main({ action: 'confirmOrder', id: ids[0] })
+  assert.equal(selected.data.status, 'confirmed')
+  assert.equal(fx.rows.products[0].status, 'reserved')
+  assert.equal(fx.rows.orders.filter(item => item.productId === 'p1' && item.status === 'confirmed').length, 1)
+  for (const id of ids.slice(1)) {
+    const other = fx.rows.orders.find(item => item._id === id)
+    assert.equal(other.status, 'cancelled')
+    assert.equal(other.cancelReason, 'seller_selected_other_buyer')
+    assert.equal(other.activeKey, `closed_${id}`)
+    assert.ok(other.cancelledAt)
+    assert.equal(other.buyerUnread, true)
+    assert.equal(other.sellerUnread, false)
+  }
+  assert.equal((await fx.main({ action: 'getOrderUnreadSummary' })).data.total, 0)
+  assert.equal((await fx.main({ action: 'confirmOrder', id: ids[1] })).error.code, 'INVALID_STATE')
+  assert.equal((await fx.main({ action: 'updateProduct', id: 'p1', product: {} })).error.code, 'INVALID_STATE')
+  assert.equal((await fx.main({ action: 'deleteProduct', id: 'p1' })).error.code, 'INVALID_STATE')
+  assert.equal((await fx.main({ action: 'setProductStatus', id: 'p1', status: 'offline' })).error.code, 'INVALID_STATE')
+  assert.equal((await fx.main({ action: 'listProducts' })).data.some(item => item._id === 'p1' && item.status === 'reserved'), true)
+  fx.setUser('buyerB')
+  assert.equal((await fx.main({ action: 'getOrderUnreadSummary' })).data.buyer, 1)
+  assert.equal((await fx.main({ action: 'getOrder', id: ids[1] })).data.cancelReason, 'seller_selected_other_buyer')
+  assert.equal((await fx.main({ action: 'createOrder', productId: 'p1' })).error.code, 'INVALID_STATE')
+  fx.setUser('outsider')
+  assert.equal((await fx.main({ action: 'cancelOrder', id: ids[0] })).error.code, 'FORBIDDEN')
+  assert.equal(fx.rows.conversations.length, 1)
+  assert.equal(fx.rows.messages.length, 1)
+})
+
+test('已确认订单取消后商品重新在售，自动取消过的买家可再次下单；完成后商品已售', async () => {
+  const fx = fixture()
+  const first = (await fx.main({ action: 'createOrder', productId: 'p1' })).data.id
+  fx.setUser('buyerB')
+  const displaced = (await fx.main({ action: 'createOrder', productId: 'p1' })).data.id
+  fx.setUser('seller')
+  await fx.main({ action: 'confirmOrder', id: first })
+  fx.setUser('buyer')
+  const cancelled = await fx.main({ action: 'cancelOrder', id: first })
+  assert.equal(cancelled.data.status, 'cancelled')
+  assert.equal(fx.rows.products[0].status, 'selling')
+  assert.equal(fx.rows.orders.find(item => item._id === first).activeKey, `closed_${first}`)
+  fx.setUser('buyerB')
+  const retry = await fx.main({ action: 'createOrder', productId: 'p1' })
+  assert.equal(retry.ok, true)
+  assert.notEqual(retry.data.id, displaced)
+  fx.setUser('seller')
+  assert.equal((await fx.main({ action: 'confirmOrder', id: retry.data.id })).ok, true)
+  assert.equal(fx.rows.products[0].status, 'reserved')
+  assert.equal((await fx.main({ action: 'completeOrder', id: retry.data.id })).ok, true)
+  assert.equal(fx.rows.products[0].status, 'sold')
+  assert.equal((await fx.main({ action: 'cancelOrder', id: retry.data.id })).error.code, 'INVALID_STATE')
+})
+
+test('并发确认最多一个成功；旧版已确认订单仍能完成', async () => {
+  const fx = fixture()
+  const first = (await fx.main({ action: 'createOrder', productId: 'p1' })).data.id
+  fx.setUser('buyerB')
+  const second = (await fx.main({ action: 'createOrder', productId: 'p1' })).data.id
+  fx.setUser('seller')
+  const results = await Promise.all([fx.main({ action: 'confirmOrder', id: first }), fx.main({ action: 'confirmOrder', id: second })])
+  assert.equal(results.filter(item => item.ok).length, 1)
+  assert.equal(fx.rows.orders.filter(item => item.status === 'confirmed').length, 1)
+  const legacy = fixture()
+  const id = (await legacy.main({ action: 'createOrder', productId: 'p1' })).data.id
+  legacy.rows.orders[0].status = 'confirmed'
+  legacy.setUser('buyerB')
+  assert.equal((await legacy.main({ action: 'createOrder', productId: 'p1' })).error.code, 'INVALID_STATE')
+  legacy.setUser('seller')
+  assert.equal((await legacy.main({ action: 'completeOrder', id })).ok, true)
+  assert.equal(legacy.rows.products[0].status, 'sold')
+})
+
+test('管理员下架交易中商品后，取消订单不会擅自重新上架', async () => {
+  const fx = fixture()
+  const id = (await fx.main({ action: 'createOrder', productId: 'p1' })).data.id
+  fx.setUser('seller')
+  await fx.main({ action: 'confirmOrder', id })
+  fx.rows.products[0].status = 'offline'
+  fx.rows.products[0].moderationStatus = 'blocked'
+  fx.setUser('buyer')
+  assert.equal((await fx.main({ action: 'cancelOrder', id })).ok, true)
+  assert.equal(fx.rows.products[0].status, 'offline')
 })
