@@ -8,14 +8,8 @@ import TabNav from '../../components/TabNav'
 import { isH5CloudFallback } from '../../services/mode'
 import { getUnreadMessageCount, listConversations } from '../../services/chat'
 import type { ChatConversation } from '../../types/market'
+import { formatConversationTime } from '../../utils/chatPresentation'
 import { createVisiblePoller } from '../../utils/visiblePoller'
-
-function chatTime(value: number): string {
-  const date = new Date(value)
-  const now = new Date()
-  const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-  return date.toDateString() === now.toDateString() ? time : `${date.getMonth() + 1}月${date.getDate()}日`
-}
 
 export default function MessagesPage() {
   const [items, setItems] = useState<ChatConversation[]>([])
@@ -30,7 +24,7 @@ export default function MessagesPage() {
     try {
       const [conversations, count] = await Promise.all([listConversations(), getUnreadMessageCount()])
       if (!isCurrent()) return
-      setItems(conversations); setUnreadCount(count); setError(false)
+      setItems([...conversations].sort((a, b) => b.lastMessageAt - a.lastMessageAt)); setUnreadCount(count); setError(false)
       hasLoaded.current = true
     } catch { if (isCurrent() && !hasLoaded.current) setError(true) }
     finally { if (isCurrent() && showLoading) setLoading(false) }
@@ -47,7 +41,7 @@ export default function MessagesPage() {
         <View className='messages-summary'><Text>和同学的对话</Text><Text>{unreadCount ? `${unreadCount} 条未读` : '消息已读完'}</Text></View>
         {items.map(item => <View key={item.id} className='conversation-card' onClick={() => Taro.navigateTo({ url: `/pages/chat/index?id=${encodeURIComponent(item.id)}` })}>
           <Avatar value={item.other.avatar} className='conversation-card__avatar' />
-          <View className='conversation-card__body'><View className='conversation-card__top'><Text className='conversation-card__name'>{item.other.nickname}</Text><Text className='conversation-card__time'>{chatTime(item.lastMessageAt)}</Text></View>
+          <View className='conversation-card__body'><View className='conversation-card__top'><Text className='conversation-card__name'>{item.other.nickname}</Text><Text className='conversation-card__time'>{formatConversationTime(item.lastMessageAt)}</Text></View>
             <View className='conversation-card__product'><ProductPhoto src={item.product.image} className='conversation-card__photo' /><Text>{item.product.title}</Text></View>
             <View className='conversation-card__bottom'><Text className='conversation-card__preview'>{item.lastMessage || '还没有消息，打声招呼吧'}</Text>{item.unreadCount > 0 && <Text className='conversation-card__unread'>{item.unreadCount > 99 ? '99+' : item.unreadCount}</Text>}</View>
           </View>

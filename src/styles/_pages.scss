@@ -26,12 +26,15 @@
 .chat-safety { display: block; flex: 0 0 auto; margin: 16px 30px 0; color: t.$text-secondary; font-size: t.$font-caption; line-height: 1.5; }
 .chat-scroll { flex: 1; min-height: 0; }
 .chat-messages { display: flex; flex-direction: column; gap: 20px; padding: 30px 30px 42px; }
+.chat-day-group { display: flex; flex-direction: column; gap: 20px; }
+.chat-day-label { align-self: center; padding: 5px 18px; border-radius: t.$radius-pill; background: t.$surface; color: t.$text-tertiary; font-size: t.$font-caption; }
 .chat-message { display: flex; flex-direction: column; align-items: flex-start; max-width: 84%; }
 .chat-message--mine { align-self: flex-end; align-items: flex-end; }
 .chat-message__bubble { display: block; padding: 20px 24px; border-radius: 6px t.$radius-large t.$radius-large t.$radius-large; background: t.$surface; color: t.$text-primary; font-size: t.$font-body; line-height: 1.5; word-break: break-all; box-shadow: t.$shadow-card; }
 .chat-message--mine .chat-message__bubble { border-radius: t.$radius-large 6px t.$radius-large t.$radius-large; background: t.$primary-light; color: t.$primary-dark; }
 .chat-message__time { margin-top: 6px; color: t.$text-tertiary; font-size: 18px; }
-.chat-send-error { flex: 0 0 auto; padding: 8px 30px; color: t.$danger; font-size: t.$font-secondary; text-align: right; }
+.chat-new-message { align-self: center; flex: 0 0 auto; margin-bottom: 8px; padding: 8px 20px; border-radius: t.$radius-pill; background: t.$primary; color: t.$surface; font-size: t.$font-caption; }
+.chat-send-error { flex: 0 0 auto; overflow: hidden; padding: 8px 30px; color: t.$danger; font-size: t.$font-secondary; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .chat-composer { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; padding: 14px 24px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid t.$border; background: t.$surface; }
 .chat-composer__input { flex: 1; min-width: 0; height: 76px; padding: 0 18px; border: 1px solid t.$border; border-radius: t.$radius-pill; background: t.$background; color: t.$text-primary; font-size: t.$font-body; }
 .chat-composer .ui-button { flex: 0 0 112px; min-height: 76px; padding: 0 16px; border-radius: t.$radius-pill; }
