@@ -77,7 +77,7 @@
 
 // Discover
 .explore-content > .search-bar { margin-top: 0; }
-.filter-heading { display: flex; align-items: center; gap: 7px; margin-top: 29px; color: t.$text-primary; font-size: 22px; font-weight: 800; }
+.filter-heading { display: flex; align-items: center; gap: 7px; margin-top: 24px; color: t.$text-primary; font-size: 22px; font-weight: 800; }
 .filter-scroll { width: calc(100% + 60px); margin: 14px -30px 0; white-space: nowrap; }
 .filter-chips { display: flex; gap: 11px; padding: 0 30px 8px; white-space: nowrap; }
 .sort-actions { display: flex; align-items: center; gap: 15px; color: t.$text-tertiary; white-space: nowrap; }

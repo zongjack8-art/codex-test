@@ -23,6 +23,7 @@ interface CloudProduct {
   condition: string
   images: string[]
   location?: string
+  school?: string
   status?: ProductStatus | 'active'
   moderationStatus?: 'blocked'
   viewerIsSeller?: boolean
@@ -48,6 +49,7 @@ function fromCloud(item: CloudProduct): Product {
     images: Array.isArray(item.images) ? item.images : [],
     campus: normalizeLegacyLocation(item.location),
     status: productStatus(item.status),
+    school: item.school,
     moderationStatus: item.moderationStatus === 'blocked' ? 'blocked' : undefined,
     viewerIsSeller: item.viewerIsSeller,
     createdAt: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : '',
@@ -75,18 +77,26 @@ function ownedLocalProduct(id: string): Product {
 
 export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
   const mode = getDataMode()
-  if (mode === 'cloud') return (await cloudCall<CloudProduct[]>('listProducts', { filters })).map(fromCloud)
+  const query = { ...filters, keyword: filters.keyword?.trim() || '' }
+  if (mode === 'cloud') return (await cloudCall<CloudProduct[]>('listProducts', { filters: query })).map(fromCloud)
   if (mode === 'api') {
-    const query = Object.entries(filters).filter(([, value]) => value).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join('&')
-    return apiRequest<Product[]>(`/products${query ? `?${query}` : ''}`)
+    const search = Object.entries(query).filter(([, value]) => value !== undefined && value !== '').map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join('&')
+    return apiRequest<Product[]>(`/products${search ? `?${search}` : ''}`)
   }
-  const keyword = filters.keyword?.trim().toLowerCase()
+  const keyword = query.keyword.toLowerCase()
+  const minPrice = typeof query.minPrice === 'number' && Number.isFinite(query.minPrice) && query.minPrice >= 0 ? query.minPrice : undefined
+  const maxPrice = typeof query.maxPrice === 'number' && Number.isFinite(query.maxPrice) && query.maxPrice >= 0 ? query.maxPrice : undefined
+  if (minPrice !== undefined && maxPrice !== undefined && minPrice >= maxPrice) throw new Error('价格区间无效')
   const products = localProducts().filter(product =>
     (product.status === 'selling' || product.status === 'reserved') &&
-    (!filters.category || filters.category === 'all' || product.category === filters.category) &&
+    product.moderationStatus !== 'blocked' &&
+    (!product.school || product.school === campusConfig.schoolName) &&
+    (!query.category || query.category === 'all' || product.category === query.category) &&
+    (minPrice === undefined || product.price >= minPrice) &&
+    (maxPrice === undefined || product.price < maxPrice) &&
     (!keyword || `${product.title} ${product.description}`.toLowerCase().includes(keyword))
   )
-  return products.sort((a, b) => filters.sort === 'priceAsc' ? a.price - b.price : filters.sort === 'priceDesc' ? b.price - a.price : Date.parse(b.createdAt) - Date.parse(a.createdAt))
+  return products.sort((a, b) => query.sort === 'priceAsc' ? a.price - b.price : query.sort === 'priceDesc' ? b.price - a.price : Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 50)
 }
 
 export async function getProduct(id: string): Promise<Product | null> {

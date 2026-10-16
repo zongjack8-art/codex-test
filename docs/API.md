@@ -23,7 +23,7 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 
 | 方法与路径 | 说明 | 请求/响应 |
 | --- | --- | --- |
-| `GET /products` | 查询在售和交易中商品 | 可选 `keyword`、`category`、`sort=newest/priceAsc/priceDesc`；返回 `Product[]`，`reserved` 带“交易中”状态 |
+| `GET /products` | 查询在售和交易中商品 | 可选 `keyword`、`category`、`minPrice`（含）、`maxPrice`（不含）、`sort=newest/priceAsc/priceDesc`；返回最多 50 件 `Product[]`，`reserved` 带“交易中”状态 |
 | `GET /products/:id` | 商品详情 | 返回 `Product`，不存在返回 404 |
 | `POST /products` | 发布商品 | 请求 `ProductInput`；返回新建 `Product` |
 | `GET /me/products` | 我的发布 | 返回当前用户全部状态的 `Product[]` |
@@ -35,6 +35,8 @@ Base URL 由构建变量 `TARO_APP_API_BASE_URL` 指定。所有接口使用 HTT
 `Product` 字段见 `src/types/market.ts`。当前 CloudBase 实现用人民币元和最多两位小数，图片保存为 `cloud://` 文件 ID；本页所述可选 HTTP 后端可自行改用整数分和 HTTPS 图片地址，但须在 Service 边界转换。商品图片最多 3 张。服务端必须重新验证标题、描述、价格、图片、分类和面交范围。
 
 当前 Cloud 模式通过 `market` 的 `getMyProducts`、`updateProduct`、`setProductStatus`、`deleteProduct` 实现商品管理。身份从 `getWXContext().OPENID` 取得，写操作先读取数据库商品并核对 `sellerId`；客户端传入的卖家、学校和状态等附加字段不会改变商品归属。
+
+公共搜索继续使用 `market.listProducts`，标题和描述按转义后的关键词模糊匹配；前后空格会去除，空关键词查看全部。状态限定为 `selling`、`reserved` 和旧版 `active`，学校由云函数固定，已售、下架和管理员屏蔽的商品不出现。列表响应只包含卡片展示字段，不返回卖家 OPENID。
 
 ## 收藏
 

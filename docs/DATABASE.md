@@ -143,7 +143,10 @@
 | --- | --- | --- |
 | `products` | `school` 升序、`status` 升序、`createdAt` 降序 | 首页、最新排序 |
 | `products` | `school` 升序、`status` 升序、`category` 升序、`createdAt` 降序 | 分类最新 |
-| `products` | `school` 升序、`status` 升序、`price` 升序 | 低价/高价排序；高价若控制台提示另建降序索引 |
+| `products` | `school` 升序、`status` 升序、`price` 升序 | 全部分类低价排序、价格区间；旧有规划 |
+| `products` | `school` 升序、`status` 升序、`price` 降序 | 全部分类高价排序；本轮新增建议，名称 `products_school_status_price_desc`，非唯一 |
+| `products` | `school` 升序、`status` 升序、`category` 升序、`price` 升序 | 分类低价排序；本轮新增建议，名称 `products_school_status_category_price_asc`，非唯一 |
+| `products` | `school` 升序、`status` 升序、`category` 升序、`price` 降序 | 分类高价排序；本轮新增建议，名称 `products_school_status_category_price_desc`，非唯一 |
 | `products` | `sellerId` 升序 | 我的发布；按可信 OPENID 分批读取后排序，兼容缺少较新字段的旧商品 |
 | `favorites` | `userId` 升序、`createdAt` 降序 | 我的收藏 |
 | `favorites` | `productId` 升序 | 删除商品时清理收藏 |
@@ -163,7 +166,7 @@
 
 `conversations._id` 已编码买家和商品，唯一性由数据库默认 `_id` 索引保证，无需另建“买家 + 商品”唯一索引。实际控制台如对某个组合查询提示缺索引，按提示补建，并记录在本表。聊天未读总数分批读取双方会话计数，最多扫描每侧 1000 条；运营规模超过此上限前需改为专用聚合统计。
 
-关键词搜索目前对标题和描述做转义后的正则匹配；数据量增加后需引入专用全文索引或搜索服务。商品公共列表上限 50 件、收藏展示 50 件；我的发布按 100 件一批读取当前用户商品。公共列表在大规模运营前需分页。
+关键词搜索目前对标题和描述做转义后的正则匹配；前后空格去除，空关键词视为全部。价格下界含、上界不含，因此 `0–20` 为 `[0,20)`，`20–50` 为 `[20,50)`，以此类推；`300 以上` 为 `[300,+∞)`。搜索还限制当前学校及可浏览状态 `selling/reserved`（兼容旧 `active`），并排除管理员屏蔽商品。正则关键词匹配不能依赖上述组合索引完成全文检索；数据量增加后需引入专用全文索引或搜索服务。商品公共列表上限 50 件、收藏展示 50 件；我的发布按 100 件一批读取当前用户商品。公共列表在大规模运营前需分页。
 
 ## 云存储
 

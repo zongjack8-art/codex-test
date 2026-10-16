@@ -121,13 +121,30 @@ async function run(action, event) {
     const filters = event.filters || {}
     const category = filters.category && filters.category !== 'all' ? filters.category : undefined
     if (category && !CATEGORIES.has(category)) fail('INVALID_INPUT', '商品分类无效')
-    const keyword = filters.keyword ? cleanText(filters.keyword, '关键词', 1, 40) : ''
-    const base = { status: _.in(['selling', 'active', 'reserved']), school: campus.schoolName, ...(category ? { category } : {}) }
+    const keyword = filters.keyword == null || filters.keyword === '' ? '' : cleanText(filters.keyword, '关键词', 0, 40)
+    const bound = (value, label) => {
+      if (value == null) return undefined
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100000) fail('INVALID_INPUT', `${label}无效`)
+      return value
+    }
+    const minPrice = bound(filters.minPrice, '最低价格')
+    const maxPrice = bound(filters.maxPrice, '最高价格')
+    if (minPrice !== undefined && maxPrice !== undefined && minPrice >= maxPrice) fail('INVALID_INPUT', '价格区间无效')
+    const price = minPrice !== undefined && maxPrice !== undefined ? _.gte(minPrice).and(_.lt(maxPrice)) : minPrice !== undefined ? _.gte(minPrice) : maxPrice !== undefined ? _.lt(maxPrice) : undefined
+    const base = { status: _.in(['selling', 'active', 'reserved']), school: campus.schoolName, ...(category ? { category } : {}), ...(price ? { price } : {}) }
     const regex = keyword ? db.RegExp({ regexp: escapeRegExp(keyword), options: 'i' }) : null
     const condition = regex ? _.or([{ ...base, title: regex }, { ...base, description: regex }]) : base
     const sort = filters.sort === 'priceAsc' ? ['price', 'asc'] : filters.sort === 'priceDesc' ? ['price', 'desc'] : ['createdAt', 'desc']
     const result = await products.where(condition).orderBy(sort[0], sort[1]).limit(50).get()
-    return hydrate(result.data.filter(item => item.moderationStatus !== 'blocked'))
+    const items = await hydrate(result.data.filter(item => item.moderationStatus !== 'blocked'))
+    // List cards only need display fields. Seller OPENIDs and internal moderation data stay on the server.
+    return items.map(item => ({
+      _id: item._id, title: item.title, description: item.description, price: item.price,
+      originalPrice: item.originalPrice, category: item.category, condition: item.condition,
+      images: item.images, location: item.location, status: item.status,
+      createdAt: item.createdAt, updatedAt: item.updatedAt,
+      seller: { id: '', nickname: item.seller.nickname, avatar: item.seller.avatar, school: campus.schoolName, campus: item.seller.campus }
+    }))
   }
   if (action === 'getProduct') {
     const openid = identity()

@@ -37,7 +37,7 @@ CloudBase 模式的路径为：页面 → `src/services` → `wx.cloud.callFunct
 | 页面 | 路径 | 功能 |
 | --- | --- | --- |
 | 首页 | `/pages/index/index` | 商品流、分类入口、毕业季专题、搜索入口 |
-| 分类搜索 | `/pages/categories/index` | 分类筛选、关键词搜索、排序 |
+| 分类搜索 | `/pages/categories/index` | 标题/描述关键词、分类、价格区间与排序 |
 | 商品详情 | `/pages/detail/index?id=...` | 商品信息、卖家信息、收藏、联系卖家 |
 | 发布/编辑商品 | `/pages/publish/index` | 表单校验、图片上传、保存修改 |
 | 收藏 | `/pages/favorites/index` | 收藏列表、快捷取消收藏 |

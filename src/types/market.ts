@@ -37,6 +37,7 @@ export interface Product {
   seller: Seller
   createdAt: string
   status: ProductStatus
+  school?: string
   moderationStatus?: 'blocked'
   /** Set by getProduct; in Cloud mode this comes from the market function's OPENID check. */
   viewerIsSeller?: boolean
@@ -56,6 +57,10 @@ export interface ProductInput {
 export interface ProductFilters {
   keyword?: string
   category?: CategoryId | 'all'
+  /** Inclusive lower bound, in yuan. */
+  minPrice?: number
+  /** Exclusive upper bound, in yuan. */
+  maxPrice?: number
   sort?: 'newest' | 'priceAsc' | 'priceDesc'
 }
 
