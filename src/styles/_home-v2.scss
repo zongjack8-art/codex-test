@@ -1,0 +1,322 @@
+@use './tokens' as t;
+
+// CampusMarket green visual refresh. This file intentionally overrides
+// existing home/component styles without changing business logic.
+.home-page {
+  background: #f7faf7;
+}
+
+.home-page .content-pad {
+  padding-left: 22px;
+  padding-right: 22px;
+}
+
+.home-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 34px 28px 38px;
+  border-radius: 0 0 42px 42px;
+  background:
+    radial-gradient(circle at 84% 14%, rgba(108, 190, 113, .18) 0 58px, transparent 59px),
+    radial-gradient(circle at 94% 34%, rgba(71, 173, 116, .12) 0 105px, transparent 106px),
+    linear-gradient(145deg, #eefbf3 0%, #e8f7f0 44%, #f6fbf7 100%);
+}
+
+.home-hero::before {
+  position: absolute;
+  right: -18px;
+  bottom: 108px;
+  width: 210px;
+  height: 112px;
+  border-radius: 90px 0 0 0;
+  background: linear-gradient(145deg, rgba(83, 167, 93, .08), rgba(83, 167, 93, .02));
+  content: '';
+  transform: rotate(-8deg);
+}
+
+.home-hero::after {
+  position: absolute;
+  top: 78px;
+  right: -78px;
+  width: 286px;
+  height: 286px;
+  border: 1px solid rgba(42, 135, 93, .10);
+  border-radius: 50%;
+  content: '';
+}
+
+.home-brand {
+  position: relative;
+  z-index: 2;
+  gap: 14px;
+}
+
+.home-brand__mark {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #1f9f72, #147d5b);
+  box-shadow: 0 12px 24px rgba(29, 128, 90, .16);
+  font-size: 36px;
+}
+
+.home-brand__name {
+  font-size: 27px;
+  letter-spacing: -.4px;
+}
+
+.home-brand__sub {
+  margin-top: 4px;
+  color: #17815f;
+  font-size: 18px;
+}
+
+.home-brand__campus {
+  padding: 9px 13px;
+  border-color: rgba(31, 151, 105, .12);
+  background: rgba(255, 255, 255, .82);
+  box-shadow: 0 8px 20px rgba(50, 121, 88, .05);
+  color: #217a5e;
+}
+
+.home-hero__copy {
+  position: relative;
+  z-index: 2;
+  margin: 38px 0 28px;
+}
+
+.home-hero__eyebrow {
+  color: #25845f;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: .8px;
+}
+
+.home-hero__title {
+  max-width: 610px;
+  margin-top: 10px;
+  color: #17372d;
+  font-size: 44px;
+  line-height: 1.28;
+  letter-spacing: -.8px;
+}
+
+.home-hero__title > text {
+  color: #1d8d63;
+}
+
+.home-hero__desc {
+  margin-top: 13px;
+  color: #698078;
+  font-size: 23px;
+}
+
+.home-hero__search.search-bar,
+.home-hero .search-bar {
+  position: relative;
+  z-index: 2;
+  min-height: 92px;
+  padding: 0 14px 0 24px;
+  border: 1px solid rgba(52, 142, 101, .08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 14px 34px rgba(40, 113, 83, .10);
+}
+
+.home-hero .search-bar__placeholder,
+.home-hero .search-bar__input {
+  font-size: 25px;
+}
+
+.home-hero .search-bar__arrow {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #34b775, #249a64);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(39, 158, 104, .20);
+}
+
+.home-hero .search-bar__arrow .ui-icon {
+  color: #fff;
+}
+
+.home-hero__promise {
+  position: relative;
+  z-index: 2;
+  margin-top: 18px;
+  color: #668178;
+}
+
+.section-title {
+  margin: 36px 0 20px;
+}
+
+.section-title__main {
+  color: #17372d;
+  font-size: 35px;
+}
+
+.section-title__sub {
+  color: #94a49e;
+}
+
+.section-title__action {
+  color: #23895f;
+  font-weight: 700;
+}
+
+.category-grid {
+  gap: 24px 8px;
+  padding: 26px 8px 22px;
+  border: 0;
+  border-radius: 32px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(55, 104, 79, .06);
+}
+
+.category-tile {
+  min-height: 132px;
+  color: #20392f;
+  font-size: 23px;
+}
+
+.category-tile__icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 11px;
+  border-radius: 25px;
+  background: #eaf8ef;
+  color: #218960;
+}
+
+.category-tile__icon--1 {
+  background: #eaf4ff;
+}
+
+.category-tile__icon--2 {
+  background: #fff0e7;
+}
+
+.category-tile__icon--3 {
+  background: #f0edff;
+}
+
+.feature-card {
+  min-height: 222px;
+  margin-top: 28px;
+  padding: 28px;
+  border: 0;
+  border-radius: 32px;
+  background: linear-gradient(135deg, #f1efff 0%, #f6f5ff 100%);
+  box-shadow: 0 12px 28px rgba(104, 100, 164, .06);
+}
+
+.feature-card__eyebrow {
+  color: #716bd2;
+}
+
+.feature-card__title {
+  color: #26382f;
+  font-size: 31px;
+}
+
+.feature-card__link {
+  color: #6f6bd0;
+}
+
+.product-grid {
+  gap: 18px;
+}
+
+.product-card {
+  overflow: hidden;
+  border: 0;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(50, 91, 72, .075);
+}
+
+.product-card__photo {
+  height: 272px;
+}
+
+.product-card__body {
+  padding: 18px 18px 19px;
+}
+
+.product-card__title {
+  min-height: 64px;
+  color: #1d342b;
+  font-size: 27px;
+  font-weight: 800;
+}
+
+.product-card__price {
+  margin: 9px 0 14px;
+}
+
+.product-card .price {
+  color: #ef654e;
+}
+
+.product-card__floating .badge {
+  border-radius: 999px;
+  background: rgba(239, 250, 243, .95);
+  color: #257c59;
+  box-shadow: 0 4px 10px rgba(30, 100, 71, .04);
+}
+
+.product-card__favorite {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 5px 12px rgba(36, 82, 59, .08);
+}
+
+.product-card__footer {
+  padding-top: 12px;
+  border-top-color: #edf2ef;
+  color: #9aa8a2;
+}
+
+.home-safety {
+  margin-top: 30px;
+  padding: 21px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #edf8f2, #f5fbf8);
+}
+
+.home-safety text:first-child {
+  color: #1d805a;
+}
+
+.tab-nav {
+  height: calc(118px + env(safe-area-inset-bottom));
+  padding-top: 13px;
+  border-top-color: rgba(38, 115, 80, .08);
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 -10px 30px rgba(36, 79, 59, .055);
+}
+
+.tab-nav__item.is-active {
+  color: #1c8b61;
+}
+
+.tab-nav__item.is-active .tab-nav__icon-wrap {
+  background: #eaf8ef;
+}
+
+.tab-nav__publish .tab-nav__icon-wrap {
+  width: 72px;
+  height: 72px;
+  margin-top: -24px;
+  border: 2px solid #1d9968;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(33, 132, 89, .16);
+}
+
+.tab-nav__publish .tab-nav__label {
+  color: #187e58;
+}
