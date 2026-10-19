@@ -14,26 +14,22 @@
   background: linear-gradient(180deg, #eaf7f2 0%, #eef9f4 100%);
 }
 
-/* Crop the shared home artwork so the profile page keeps the clock tower but removes
-   the student figure on the far right. */
 .profile-hero-v3__image {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -8%;
-  width: 118%;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  opacity: .92;
-  object-position: 36% center;
-  transform: scale(1.08);
-  transform-origin: left center;
-  clip-path: inset(0 22% 0 0);
+  opacity: .94;
+  object-position: center center;
+  transform: none;
 }
 
 .profile-hero-v3__wash {
+  position: absolute;
+  inset: 0;
   background:
-    linear-gradient(90deg, rgba(247,253,249,.98) 0%, rgba(247,253,249,.93) 30%, rgba(247,253,249,.62) 48%, rgba(247,253,249,.18) 67%, rgba(239,249,244,.93) 83%, rgba(239,249,244,1) 100%),
-    linear-gradient(180deg, rgba(255,255,255,.02) 0%, rgba(239,249,244,.05) 58%, rgba(238,249,243,.48) 100%);
+    linear-gradient(90deg, rgba(247,253,249,.93) 0%, rgba(247,253,249,.84) 31%, rgba(247,253,249,.52) 49%, rgba(247,253,249,.14) 69%, rgba(247,253,249,.03) 100%),
+    linear-gradient(180deg, rgba(255,255,255,.02) 0%, rgba(239,249,244,.02) 56%, rgba(238,249,243,.40) 100%);
 }
 
 .profile-hero-v3::after {
