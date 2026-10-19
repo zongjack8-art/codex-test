@@ -1,7 +1,7 @@
 import { Image, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useRef, useState } from 'react'
-import homeHero from '../../assets/home-campus-hero.png'
+import profileCampusBg from '../../assets/profile-campus-bg.png'
 import AppButton from '../../components/AppButton'
 import Avatar from '../../components/Avatar'
 import { Badge } from '../../components/Badge'
@@ -75,7 +75,7 @@ export default function ProfilePage() {
 
   return <View className='page page--with-nav profile-page'>
     <View className='profile-hero-v3'>
-      <Image className='profile-hero-v3__image' src={homeHero} mode='aspectFill' />
+      <Image className='profile-hero-v3__image' src={profileCampusBg} mode='aspectFill' />
       <View className='profile-hero-v3__wash' />
       <Text className='profile-hero-v3__eyebrow'>MY CAMPUSMARKET</Text>
       <View className='profile-hero-v3__main'>
