@@ -1,0 +1,297 @@
+@use './tokens' as t;
+
+// Secondary page visual refresh aligned with the green CampusMarket home.
+.categories-page,
+.messages-page,
+.profile-page {
+  background: #f7faf7;
+}
+
+.categories-page .page-heading,
+.messages-page .page-heading {
+  margin: 0 18px;
+  padding: 26px 24px 28px;
+  border-radius: 0 0 30px 30px;
+  background: linear-gradient(145deg, #eaf8f2 0%, #eef8f7 54%, #f6fbf8 100%);
+  box-shadow: 0 10px 26px rgba(45, 96, 72, .05);
+}
+
+.categories-page .page-heading__eyebrow,
+.messages-page .page-heading__eyebrow,
+.profile-page .page-heading__eyebrow {
+  color: #248868;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.categories-page .page-heading__title,
+.messages-page .page-heading__title {
+  margin-top: 8px;
+  color: #19382e;
+  font-size: 34px;
+  line-height: 1.2;
+}
+
+.categories-page .page-heading__desc,
+.messages-page .page-heading__desc {
+  margin-top: 7px;
+  color: #71837c;
+  font-size: 20px;
+}
+
+.categories-page .explore-content,
+.messages-page .messages-content,
+.profile-page .profile-content {
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-bottom: calc(165px + env(safe-area-inset-bottom));
+}
+
+.categories-page .explore-content > .search-bar {
+  margin-top: 20px;
+  min-height: 74px;
+  border: 1px solid #dfece5;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(55, 104, 79, .06);
+}
+
+.categories-page .filter-heading {
+  margin-top: 20px;
+  color: #29483d;
+  font-size: 21px;
+}
+
+.categories-page .filter-scroll {
+  margin-top: 10px;
+}
+
+.categories-page .filter-chips {
+  gap: 9px;
+  padding-bottom: 4px;
+}
+
+.categories-page .chip {
+  padding: 12px 18px;
+  border: 1px solid #e0ebe5;
+  border-radius: 999px;
+  background: #fff;
+  color: #74827d;
+  font-size: 18px;
+  box-shadow: 0 5px 13px rgba(53, 93, 73, .035);
+}
+
+.categories-page .chip--active {
+  border-color: #23976b;
+  background: #23976b;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(35, 151, 107, .16);
+}
+
+.categories-page .results-bar {
+  margin: 15px 0 12px;
+  color: #8b9a94;
+  font-size: 18px;
+}
+
+.categories-page .product-grid {
+  gap: 14px;
+}
+
+.categories-page .product-card {
+  border-radius: 24px;
+  box-shadow: 0 10px 24px rgba(50, 91, 72, .06);
+}
+
+.categories-page .product-card__photo {
+  height: 246px;
+}
+
+.categories-page .product-card__body {
+  padding: 14px 14px 15px;
+}
+
+.categories-page .product-card__title {
+  min-height: 54px;
+  font-size: 23px;
+  line-height: 1.25;
+}
+
+.categories-page .product-card .price {
+  font-size: 36px;
+}
+
+.messages-page .messages-content {
+  padding-top: 20px;
+}
+
+.messages-page .messages-summary {
+  margin-bottom: 14px;
+  padding: 0 4px;
+  color: #899892;
+  font-size: 18px;
+}
+
+.messages-page .messages-summary text:first-child {
+  color: #29483d;
+  font-size: 22px;
+}
+
+.messages-page .conversation-card {
+  gap: 15px;
+  margin-bottom: 14px;
+  padding: 18px;
+  border: 1px solid #e0ece5;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(47, 88, 68, .06);
+}
+
+.messages-page .conversation-card__avatar {
+  flex-basis: 64px;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(145deg, #e7f7ef, #dff2e9);
+  color: #187d5c;
+  font-size: 23px;
+}
+
+.messages-page .conversation-card__name {
+  color: #203c32;
+  font-size: 23px;
+}
+
+.messages-page .conversation-card__time {
+  color: #9aa8a2;
+  font-size: 17px;
+}
+
+.messages-page .conversation-card__product {
+  margin: 10px 0;
+  padding: 8px 10px;
+  border-radius: 17px;
+  background: #f5f8f6;
+}
+
+.messages-page .conversation-card__photo {
+  flex-basis: 50px;
+  width: 50px;
+  height: 50px;
+  border-radius: 13px;
+}
+
+.messages-page .conversation-card__product > text,
+.messages-page .conversation-card__preview {
+  color: #6f8079;
+  font-size: 18px;
+}
+
+.profile-page .profile-hero {
+  margin: 0 18px;
+  padding: 30px 24px 72px;
+  border-radius: 0 0 34px 34px;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(65, 176, 120, .12) 0 56px, transparent 57px),
+    linear-gradient(145deg, #e9f8f1 0%, #edf8f6 58%, #f5fbf8 100%);
+  box-shadow: 0 10px 26px rgba(45, 96, 72, .05);
+}
+
+.profile-page .profile-user {
+  margin-top: 18px;
+}
+
+.profile-page .profile-user__avatar {
+  width: 88px;
+  height: 88px;
+  border: 3px solid rgba(255,255,255,.95);
+  background: linear-gradient(145deg, #e5f6ee, #d9efe6);
+  color: #16785a;
+  box-shadow: 0 8px 20px rgba(45, 105, 76, .09);
+}
+
+.profile-page .profile-user__name {
+  color: #1e3b31;
+  font-size: 31px;
+}
+
+.profile-page .profile-user__sub {
+  margin-top: 5px;
+  color: #74857e;
+  font-size: 18px;
+}
+
+.profile-page .profile-user__info .badge {
+  margin-top: 8px;
+  background: rgba(255,255,255,.78);
+  color: #217f60;
+}
+
+.profile-page .profile-content {
+  margin-top: -48px;
+}
+
+.profile-page .profile-stats {
+  border: 1px solid #e0ece5;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(48, 91, 70, .07);
+}
+
+.profile-page .profile-stats > view {
+  padding: 18px 0;
+}
+
+.profile-page .profile-stats > view > text:first-child {
+  color: #19795b;
+  font-size: 31px;
+}
+
+.profile-page .profile-section-heading {
+  margin-top: 24px;
+}
+
+.profile-page .profile-section-heading text:first-child {
+  color: #203d33;
+  font-size: 28px;
+}
+
+.profile-page .profile-section-heading text:last-child {
+  color: #8b9a94;
+  font-size: 17px;
+}
+
+.profile-page .menu-card {
+  overflow: hidden;
+  border: 1px solid #e0ece5;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(48, 91, 70, .055);
+}
+
+.profile-page .menu-card__item {
+  min-height: 72px;
+  padding: 0 16px;
+  border-bottom-color: #edf2ef;
+}
+
+.profile-page .menu-card__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: #edf8f3;
+  color: #26896a;
+}
+
+.profile-page .menu-card__item > text {
+  color: #29483d;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.profile-page .profile-note {
+  margin-top: 18px;
+  border: 1px solid #dcefe6;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #eaf8f2, #f2fbf7);
+}
