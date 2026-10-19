@@ -2,6 +2,12 @@ import { Image, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import homeHero from '../../assets/home-campus-hero.png'
+import booksIcon from '../../assets/category-icons/books.png'
+import digitalIcon from '../../assets/category-icons/digital.png'
+import dormIcon from '../../assets/category-icons/dorm.png'
+import clothesIcon from '../../assets/category-icons/clothes.png'
+import bikeIcon from '../../assets/category-icons/bike.png'
+import otherIcon from '../../assets/category-icons/other.png'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import ProductCard from '../../components/ProductCard'
@@ -17,12 +23,12 @@ import type { Product } from '../../types/market'
 const goExplore = (query = '') => Taro.reLaunch({ url: `/pages/categories/index${query}` })
 
 const homeCategories = [
-  { id: 'books', title: '教材', subtitle: '课本资料', icon: 'book', tone: 0 },
-  { id: 'digital', title: '数码', subtitle: '手机电脑', icon: 'laptop', tone: 1 },
-  { id: 'daily', title: '宿舍好物', subtitle: '桌椅收纳', icon: 'bed', tone: 2 },
-  { id: 'fashion', title: '衣物', subtitle: '潮流穿搭', icon: 'shirt', tone: 0 },
-  { id: 'sports', title: '代步', subtitle: '单车滑板', icon: 'bike', tone: 3 },
-  { id: 'other', title: '其他', subtitle: '更多闲置', icon: 'more', tone: 2 }
+  { id: 'books', title: '教材', subtitle: '课本资料', image: booksIcon },
+  { id: 'digital', title: '数码', subtitle: '手机电脑', image: digitalIcon },
+  { id: 'daily', title: '宿舍好物', subtitle: '桌椅收纳', image: dormIcon },
+  { id: 'fashion', title: '衣物', subtitle: '潮流穿搭', image: clothesIcon },
+  { id: 'sports', title: '代步', subtitle: '单车滑板', image: bikeIcon },
+  { id: 'other', title: '其他', subtitle: '更多闲置', image: otherIcon }
 ] as const
 
 export default function HomePage() {
@@ -55,7 +61,7 @@ export default function HomePage() {
 
       <View className='category-grid category-grid--reference'>
         {homeCategories.map(item => <View key={item.id} className='category-tile category-tile--reference' onClick={() => goExplore(`?category=${item.id}`)}>
-          <View className={`category-tile__icon category-tile__icon--${item.tone}`}><Icon name={item.icon} size='lg' /></View>
+          <Image className='category-tile__art' src={item.image} mode='aspectFill' />
           <View className='category-tile__copy'><Text className='category-tile__title'>{item.title}</Text><Text className='category-tile__subtitle'>{item.subtitle}</Text></View>
         </View>)}
       </View>
