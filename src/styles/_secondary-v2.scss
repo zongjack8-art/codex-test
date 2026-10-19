@@ -1,6 +1,5 @@
 @use './tokens' as t;
 
-// Secondary page visual refresh aligned with the green CampusMarket home.
 .categories-page,
 .messages-page,
 .profile-page {
@@ -9,202 +8,266 @@
 
 .categories-page .page-heading,
 .messages-page .page-heading {
-  margin: 0 18px;
-  padding: 26px 24px 28px;
-  border-radius: 0 0 30px 30px;
-  background: linear-gradient(145deg, #eaf8f2 0%, #eef8f7 54%, #f6fbf8 100%);
-  box-shadow: 0 10px 26px rgba(45, 96, 72, .05);
+  margin: 0 16px;
+  padding: 24px 22px 26px;
+  border-radius: 0 0 28px 28px;
+  background: linear-gradient(145deg, #eaf8f2 0%, #eef8f7 54%, #f7fbf8 100%);
+  box-shadow: 0 9px 24px rgba(45, 96, 72, .045);
 }
 
 .categories-page .page-heading__eyebrow,
 .messages-page .page-heading__eyebrow,
 .profile-page .page-heading__eyebrow {
   color: #248868;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: 1.5px;
 }
 
 .categories-page .page-heading__title,
 .messages-page .page-heading__title {
-  margin-top: 8px;
+  margin-top: 7px;
   color: #19382e;
-  font-size: 34px;
-  line-height: 1.2;
+  font-size: 33px;
+  line-height: 1.18;
 }
 
 .categories-page .page-heading__desc,
 .messages-page .page-heading__desc {
-  margin-top: 7px;
-  color: #71837c;
-  font-size: 20px;
+  margin-top: 6px;
+  color: #74857e;
+  font-size: 19px;
 }
 
 .categories-page .explore-content,
 .messages-page .messages-content,
 .profile-page .profile-content {
-  padding-left: 20px;
-  padding-right: 20px;
+  padding-left: 18px;
+  padding-right: 18px;
   padding-bottom: calc(165px + env(safe-area-inset-bottom));
 }
 
+.categories-page .explore-content {
+  padding-top: 18px;
+}
+
 .categories-page .explore-content > .search-bar {
-  margin-top: 20px;
-  min-height: 74px;
+  min-height: 72px;
   border: 1px solid #dfece5;
   border-radius: 999px;
   background: #fff;
-  box-shadow: 0 10px 24px rgba(55, 104, 79, .06);
+  box-shadow: 0 9px 22px rgba(55, 104, 79, .055);
 }
 
 .categories-page .filter-heading {
-  margin-top: 20px;
+  margin-top: 18px;
   color: #29483d;
-  font-size: 21px;
+  font-size: 20px;
+  font-weight: 800;
 }
 
 .categories-page .filter-scroll {
-  margin-top: 10px;
+  width: calc(100% + 36px);
+  margin: 9px -18px 0;
 }
 
 .categories-page .filter-chips {
-  gap: 9px;
-  padding-bottom: 4px;
+  gap: 8px;
+  padding: 0 18px 3px;
 }
 
 .categories-page .chip {
-  padding: 12px 18px;
+  padding: 11px 17px;
   border: 1px solid #e0ebe5;
   border-radius: 999px;
   background: #fff;
   color: #74827d;
   font-size: 18px;
-  box-shadow: 0 5px 13px rgba(53, 93, 73, .035);
+  box-shadow: 0 4px 11px rgba(53, 93, 73, .03);
 }
 
 .categories-page .chip--active {
   border-color: #23976b;
-  background: #23976b;
+  background: linear-gradient(145deg, #2ca574, #228e65);
   color: #fff;
-  box-shadow: 0 8px 18px rgba(35, 151, 107, .16);
+  box-shadow: 0 7px 17px rgba(35, 151, 107, .16);
 }
 
 .categories-page .results-bar {
-  margin: 15px 0 12px;
+  margin: 14px 0 11px;
   color: #8b9a94;
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .categories-page .product-grid {
-  gap: 14px;
+  gap: 13px;
 }
 
 .categories-page .product-card {
-  border-radius: 24px;
-  box-shadow: 0 10px 24px rgba(50, 91, 72, .06);
+  border-radius: 23px;
+  box-shadow: 0 9px 22px rgba(50, 91, 72, .055);
 }
 
 .categories-page .product-card__photo {
-  height: 246px;
+  height: 240px;
 }
 
 .categories-page .product-card__body {
-  padding: 14px 14px 15px;
+  padding: 13px 13px 14px;
 }
 
 .categories-page .product-card__title {
-  min-height: 54px;
-  font-size: 23px;
-  line-height: 1.25;
+  min-height: 52px;
+  font-size: 22px;
+  line-height: 1.24;
 }
 
 .categories-page .product-card .price {
-  font-size: 36px;
+  font-size: 35px;
 }
 
 .messages-page .messages-content {
-  padding-top: 20px;
+  padding-top: 16px;
 }
 
 .messages-page .messages-summary {
-  margin-bottom: 14px;
-  padding: 0 4px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 0 3px;
   color: #899892;
-  font-size: 18px;
+  font-size: 17px;
+}
+
+.messages-page .messages-summary > view {
+  min-width: 0;
 }
 
 .messages-page .messages-summary text:first-child {
+  display: block;
   color: #29483d;
   font-size: 22px;
+  font-weight: 800;
+}
+
+.messages-page .messages-summary__hint {
+  display: block;
+  margin-top: 3px;
+  color: #9aa8a2;
+  font-size: 16px;
+}
+
+.messages-page .conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .messages-page .conversation-card {
-  gap: 15px;
-  margin-bottom: 14px;
-  padding: 18px;
+  position: relative;
+  gap: 14px;
+  margin-bottom: 0;
+  padding: 17px;
   border: 1px solid #e0ece5;
-  border-radius: 26px;
+  border-radius: 24px;
   background: #fff;
-  box-shadow: 0 10px 26px rgba(47, 88, 68, .06);
+  box-shadow: 0 9px 23px rgba(47, 88, 68, .055);
+}
+
+.messages-page .conversation-card.is-unread {
+  border-color: #d2eadf;
+  background: linear-gradient(145deg, #ffffff 0%, #fbfffc 100%);
+}
+
+.messages-page .conversation-card__avatar-wrap {
+  position: relative;
+  flex: 0 0 auto;
 }
 
 .messages-page .conversation-card__avatar {
-  flex-basis: 64px;
-  width: 64px;
-  height: 64px;
+  flex-basis: 62px;
+  width: 62px;
+  height: 62px;
   background: linear-gradient(145deg, #e7f7ef, #dff2e9);
   color: #187d5c;
-  font-size: 23px;
+  font-size: 22px;
+}
+
+.messages-page .conversation-card__dot {
+  position: absolute;
+  top: 1px;
+  right: -1px;
+  width: 13px;
+  height: 13px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #f05f4b;
+}
+
+.messages-page .conversation-card__top {
+  align-items: baseline;
 }
 
 .messages-page .conversation-card__name {
   color: #203c32;
-  font-size: 23px;
+  font-size: 22px;
 }
 
 .messages-page .conversation-card__time {
-  color: #9aa8a2;
-  font-size: 17px;
+  color: #a1ada8;
+  font-size: 16px;
+}
+
+.messages-page .conversation-card__preview {
+  display: block;
+  overflow: hidden;
+  margin-top: 5px;
+  color: #667a72;
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .messages-page .conversation-card__product {
-  margin: 10px 0;
-  padding: 8px 10px;
-  border-radius: 17px;
+  margin: 9px 0 0;
+  padding: 7px 9px;
+  border-radius: 16px;
   background: #f5f8f6;
 }
 
 .messages-page .conversation-card__photo {
-  flex-basis: 50px;
-  width: 50px;
-  height: 50px;
-  border-radius: 13px;
+  flex-basis: 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
 }
 
-.messages-page .conversation-card__product > text,
-.messages-page .conversation-card__preview {
-  color: #6f8079;
-  font-size: 18px;
+.messages-page .conversation-card__product > text {
+  color: #7b8984;
+  font-size: 17px;
 }
 
 .profile-page .profile-hero {
-  margin: 0 18px;
-  padding: 30px 24px 72px;
+  margin: 0 16px;
+  padding: 28px 22px 76px;
   border-radius: 0 0 34px 34px;
   background:
-    radial-gradient(circle at 88% 18%, rgba(65, 176, 120, .12) 0 56px, transparent 57px),
+    radial-gradient(circle at 88% 16%, rgba(65, 176, 120, .13) 0 54px, transparent 55px),
+    radial-gradient(circle at 76% 70%, rgba(111, 187, 149, .08) 0 72px, transparent 73px),
     linear-gradient(145deg, #e9f8f1 0%, #edf8f6 58%, #f5fbf8 100%);
   box-shadow: 0 10px 26px rgba(45, 96, 72, .05);
 }
 
 .profile-page .profile-user {
-  margin-top: 18px;
+  margin-top: 17px;
 }
 
 .profile-page .profile-user__avatar {
-  width: 88px;
-  height: 88px;
-  border: 3px solid rgba(255,255,255,.95);
+  width: 90px;
+  height: 90px;
+  border: 3px solid rgba(255,255,255,.96);
   background: linear-gradient(145deg, #e5f6ee, #d9efe6);
   color: #16785a;
   box-shadow: 0 8px 20px rgba(45, 105, 76, .09);
@@ -223,75 +286,85 @@
 
 .profile-page .profile-user__info .badge {
   margin-top: 8px;
-  background: rgba(255,255,255,.78);
+  background: rgba(255,255,255,.82);
   color: #217f60;
 }
 
 .profile-page .profile-content {
-  margin-top: -48px;
+  margin-top: -50px;
 }
 
 .profile-page .profile-stats {
   border: 1px solid #e0ece5;
-  border-radius: 26px;
+  border-radius: 25px;
   background: #fff;
   box-shadow: 0 12px 28px rgba(48, 91, 70, .07);
 }
 
 .profile-page .profile-stats > view {
-  padding: 18px 0;
+  padding: 17px 0;
 }
 
 .profile-page .profile-stats > view > text:first-child {
   color: #19795b;
-  font-size: 31px;
+  font-size: 32px;
+}
+
+.profile-page .profile-stats > view > text:last-child {
+  margin-top: 4px;
+  color: #7f8f89;
 }
 
 .profile-page .profile-section-heading {
-  margin-top: 24px;
+  margin-top: 22px;
+  margin-bottom: 10px;
+}
+
+.profile-page .profile-section-heading--secondary {
+  margin-top: 18px;
 }
 
 .profile-page .profile-section-heading text:first-child {
   color: #203d33;
-  font-size: 28px;
+  font-size: 27px;
 }
 
 .profile-page .profile-section-heading text:last-child {
   color: #8b9a94;
-  font-size: 17px;
+  font-size: 16px;
 }
 
 .profile-page .menu-card {
   overflow: hidden;
   border: 1px solid #e0ece5;
-  border-radius: 26px;
+  border-radius: 24px;
   background: #fff;
-  box-shadow: 0 10px 26px rgba(48, 91, 70, .055);
+  box-shadow: 0 9px 23px rgba(48, 91, 70, .05);
 }
 
 .profile-page .menu-card__item {
-  min-height: 72px;
-  padding: 0 16px;
+  min-height: 68px;
+  padding: 0 15px;
   border-bottom-color: #edf2ef;
 }
 
 .profile-page .menu-card__icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 15px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   background: #edf8f3;
   color: #26896a;
 }
 
 .profile-page .menu-card__item > text {
   color: #29483d;
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 700;
 }
 
 .profile-page .profile-note {
-  margin-top: 18px;
+  margin-top: 17px;
   border: 1px solid #dcefe6;
-  border-radius: 22px;
+  border-radius: 21px;
   background: linear-gradient(135deg, #eaf8f2, #f2fbf7);
 }
