@@ -19,7 +19,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: .94;
+  opacity: .97;
   object-position: center center;
   transform: none;
 }
@@ -28,8 +28,8 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(247,253,249,.93) 0%, rgba(247,253,249,.84) 31%, rgba(247,253,249,.52) 49%, rgba(247,253,249,.14) 69%, rgba(247,253,249,.03) 100%),
-    linear-gradient(180deg, rgba(255,255,255,.02) 0%, rgba(239,249,244,.02) 56%, rgba(238,249,243,.40) 100%);
+    linear-gradient(90deg, rgba(247,253,249,.86) 0%, rgba(247,253,249,.72) 30%, rgba(247,253,249,.38) 49%, rgba(247,253,249,.10) 69%, rgba(247,253,249,.02) 100%),
+    linear-gradient(180deg, rgba(255,255,255,.01) 0%, rgba(239,249,244,.01) 56%, rgba(238,249,243,.30) 100%);
 }
 
 .profile-hero-v3::after {
@@ -103,8 +103,8 @@
 .profile-hero-v3__quote {
   position: absolute;
   z-index: 3;
-  top: 132px;
-  right: 30px;
+  top: 116px;
+  right: 48px;
   width: 224px;
   padding: 0;
   transform: rotate(-4deg);
@@ -128,7 +128,7 @@
 }
 
 .profile-content-v3 {
-  margin-top: -78px;
+  margin-top: -64px;
   padding-left: 30px;
   padding-right: 30px;
   padding-bottom: calc(235px + env(safe-area-inset-bottom));
