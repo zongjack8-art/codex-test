@@ -46,7 +46,7 @@ export default function HomePage() {
         <View className='home-brand__campus'><Icon name='pin' size='sm' /><Text>{campusConfig.schoolName}</Text></View>
       </View>
       <View className='home-hero__copy'><Text className='home-hero__eyebrow'>{campusConfig.schoolSlogan}</Text><Text className='home-hero__title'>发现同学的好东西，<Text>让闲置继续发光。</Text></Text><Text className='home-hero__desc'>在熟悉的校园里，买卖都更轻松。</Text></View>
-      <SearchBar className='home-hero__search' onClick={() => goExplore()} />
+      <SearchBar className='home-hero__search' actionLabel='搜索' onClick={() => goExplore()} />
       <View className='home-hero__promise'><Icon name='shield' size='sm' /><Text>同校面交 · 当面验货更安心</Text></View>
     </View>
 
