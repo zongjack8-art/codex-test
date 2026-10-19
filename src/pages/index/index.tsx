@@ -1,6 +1,7 @@
-import { Text, View } from '@tarojs/components'
+import { Image, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
+import homeHero from '../../assets/home-campus-hero.png'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import ProductCard from '../../components/ProductCard'
@@ -29,6 +30,8 @@ export default function HomePage() {
 
   return <View className='page page--with-nav home-page'>
     <View className='home-hero'>
+      <Image className='home-hero__visual' src={homeHero} mode='aspectFill' />
+      <View className='home-hero__veil' />
       <View className='home-brand'>
         <View className='home-brand__mark'><Text>C</Text></View>
         <View><Text className='home-brand__name'>{campusConfig.brandName}</Text><Text className='home-brand__sub'>{campusConfig.brandChineseName}</Text></View>
