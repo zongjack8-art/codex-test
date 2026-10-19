@@ -180,64 +180,21 @@
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  min-height: 86px;
+  min-height: 88px;
   padding: 4px 2px;
   color: #20392f;
   text-align: left;
 }
 
-.category-tile--reference .category-tile__icon {
-  position: relative;
-  overflow: hidden;
-  flex: 0 0 66px;
-  width: 66px;
-  height: 66px;
-  margin: 0 10px 0 0;
+.category-tile__art {
+  flex: 0 0 68px;
+  width: 68px;
+  height: 68px;
+  margin-right: 10px;
   border-radius: 21px;
-  background: linear-gradient(145deg, #edf9f2, #dff4e7);
-  color: #218960;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 5px 12px rgba(61, 124, 91, .07);
-}
-
-.category-tile--reference .category-tile__icon::before {
-  position: absolute;
-  top: -9px;
-  right: -6px;
-  width: 31px;
-  height: 31px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.56);
-  content: '';
-}
-
-.category-tile--reference .category-tile__icon::after {
-  position: absolute;
-  left: 7px;
-  bottom: 6px;
-  width: 18px;
-  height: 7px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.40);
-  content: '';
-  transform: rotate(-18deg);
-}
-
-.category-tile--reference .category-tile__icon .ui-icon {
-  position: relative;
-  z-index: 1;
-  transform: scale(1.02);
-}
-
-.category-tile--reference .category-tile__icon--1 {
-  background: linear-gradient(145deg, #eef7ff, #dfeeff);
-}
-
-.category-tile--reference .category-tile__icon--2 {
-  background: linear-gradient(145deg, #fff5ef, #ffe7da);
-}
-
-.category-tile--reference .category-tile__icon--3 {
-  background: linear-gradient(145deg, #f5f1ff, #e9e2ff);
+  background: #f4faf6;
+  object-fit: cover;
+  box-shadow: 0 6px 14px rgba(58, 107, 81, .08);
 }
 
 .category-tile__copy {
