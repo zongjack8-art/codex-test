@@ -38,14 +38,16 @@ export default function MessagesPage() {
     <View className='content-pad messages-content'>
       {isH5CloudFallback() && <Text className='mode-banner'>H5 当前使用本机演示消息。</Text>}
       {loading ? <View className='listing-skeleton'><View /><View /></View> : error ? <EmptyState kind='error' title='暂时没能加载消息' description='检查网络后再试一次' action='重试' onAction={() => { void poller.current?.refresh(false) }} /> : items.length ? <>
-        <View className='messages-summary'><Text>和同学的对话</Text><Text>{unreadCount ? `${unreadCount} 条未读` : '消息已读完'}</Text></View>
-        {items.map(item => <View key={item.id} className='conversation-card' onClick={() => Taro.navigateTo({ url: `/pages/chat/index?id=${encodeURIComponent(item.id)}` })}>
-          <Avatar value={item.other.avatar} className='conversation-card__avatar' />
-          <View className='conversation-card__body'><View className='conversation-card__top'><Text className='conversation-card__name'>{item.other.nickname}</Text><Text className='conversation-card__time'>{formatConversationTime(item.lastMessageAt)}</Text></View>
-            <View className='conversation-card__product'><ProductPhoto src={item.product.image} className='conversation-card__photo' /><Text>{item.product.title}</Text></View>
-            <View className='conversation-card__bottom'><Text className='conversation-card__preview'>{item.lastMessage || '还没有消息，打声招呼吧'}</Text>{item.unreadCount > 0 && <Text className='conversation-card__unread'>{item.unreadCount > 99 ? '99+' : item.unreadCount}</Text>}</View>
-          </View>
-        </View>)}
+        <View className='messages-summary'><View><Text>和同学的对话</Text><Text className='messages-summary__hint'>关于好物、面交与订单的消息</Text></View><Text>{unreadCount ? `${unreadCount} 条未读` : '消息已读完'}</Text></View>
+        <View className='conversation-list'>
+          {items.map(item => <View key={item.id} className={`conversation-card ${item.unreadCount > 0 ? 'is-unread' : ''}`} onClick={() => Taro.navigateTo({ url: `/pages/chat/index?id=${encodeURIComponent(item.id)}` })}>
+            <View className='conversation-card__avatar-wrap'><Avatar value={item.other.avatar} className='conversation-card__avatar' />{item.unreadCount > 0 && <View className='conversation-card__dot' />}</View>
+            <View className='conversation-card__body'><View className='conversation-card__top'><Text className='conversation-card__name'>{item.other.nickname}</Text><Text className='conversation-card__time'>{formatConversationTime(item.lastMessageAt)}</Text></View>
+              <Text className='conversation-card__preview'>{item.lastMessage || '还没有消息，打声招呼吧'}</Text>
+              <View className='conversation-card__product'><ProductPhoto src={item.product.image} className='conversation-card__photo' /><Text>{item.product.title}</Text></View>
+            </View>
+          </View>)}
+        </View>
       </> : <EmptyState kind='messages' title='还没有消息' description='看到喜欢的好物，可以从商品详情联系卖家' action='去逛逛' onAction={() => Taro.reLaunch({ url: '/pages/index/index' })} />}
     </View>
     <TabNav active='messages' unreadCount={unreadCount} />
