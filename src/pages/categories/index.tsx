@@ -56,7 +56,7 @@ export default function CategoriesPage() {
 
   const clearFilters = () => { setKeyword(''); setCategory('all'); setPriceIndex(0); setSort('newest') }
 
-  return <View className='page page--with-nav'>
+  return <View className='page page--with-nav categories-page'>
     <View className='page-heading'><Text className='page-heading__eyebrow'>EXPLORE CAMPUS</Text><Text className='page-heading__title'>发现{campusConfig.schoolShortName}好物</Text><Text className='page-heading__desc'>从一本书到一辆车，遇见刚好需要的。</Text></View>
     <View className='content-pad explore-content'>
       <SearchBar value={keyword} onInput={setKeyword} />
