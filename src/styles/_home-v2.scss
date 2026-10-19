@@ -147,7 +147,7 @@
 }
 
 .section-title {
-  margin: 36px 0 20px;
+  margin: 34px 0 18px;
 }
 
 .section-title__main {
@@ -164,63 +164,71 @@
   font-weight: 700;
 }
 
-.category-grid {
-  gap: 24px 8px;
-  padding: 26px 8px 22px;
+.category-grid--reference {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 14px;
+  margin-top: 22px;
+  padding: 24px 20px;
   border: 0;
   border-radius: 32px;
-  background: #fff;
-  box-shadow: 0 14px 36px rgba(55, 104, 79, .06);
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 14px 36px rgba(55, 104, 79, .07);
 }
 
-.category-tile {
-  min-height: 132px;
+.category-tile--reference {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 94px;
+  padding: 6px 4px;
   color: #20392f;
-  font-size: 23px;
+  text-align: left;
 }
 
-.category-tile__icon {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 11px;
-  border-radius: 25px;
+.category-tile--reference .category-tile__icon {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 72px;
+  margin: 0 12px 0 0;
+  border-radius: 22px;
   background: #eaf8ef;
   color: #218960;
 }
 
-.category-tile__icon--1 {
+.category-tile--reference .category-tile__icon--1 {
   background: #eaf4ff;
 }
 
-.category-tile__icon--2 {
+.category-tile--reference .category-tile__icon--2 {
   background: #fff0e7;
 }
 
-.category-tile__icon--3 {
+.category-tile--reference .category-tile__icon--3 {
   background: #f0edff;
 }
 
-.feature-card {
-  min-height: 222px;
-  margin-top: 28px;
-  padding: 28px;
-  border: 0;
-  border-radius: 32px;
-  background: linear-gradient(135deg, #f1efff 0%, #f6f5ff 100%);
-  box-shadow: 0 12px 28px rgba(104, 100, 164, .06);
+.category-tile__copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.feature-card__eyebrow {
-  color: #716bd2;
+.category-tile__title {
+  color: #20392f;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-.feature-card__title {
-  color: #26382f;
-  font-size: 31px;
-}
-
-.feature-card__link {
-  color: #6f6bd0;
+.category-tile__subtitle {
+  margin-top: 6px;
+  color: #9ca9a4;
+  font-size: 18px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .product-grid {
