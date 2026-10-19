@@ -1,0 +1,186 @@
+// Final profile-page pass: keep the generated reference composition while making
+// the layout stable on narrow WeChat mini-program viewports.
+.profile-page {
+  background: linear-gradient(180deg, #f8fcfa 0%, #f3f8f5 100%);
+}
+
+.profile-hero-v3 {
+  position: relative;
+  min-height: 360px;
+  padding: 30px 28px 98px;
+  border-radius: 0 0 40px 40px;
+}
+
+.profile-hero-v3__image {
+  opacity: .30;
+  object-position: 58% center;
+}
+
+.profile-hero-v3__wash {
+  background:
+    linear-gradient(90deg, rgba(246,253,249,.98) 0%, rgba(246,253,249,.93) 42%, rgba(246,253,249,.70) 66%, rgba(246,253,249,.42) 100%),
+    linear-gradient(180deg, rgba(255,255,255,.18), rgba(234,248,241,.76));
+}
+
+.profile-hero-v3__eyebrow {
+  font-size: 17px;
+  letter-spacing: 1.4px;
+}
+
+.profile-hero-v3__main {
+  display: block;
+  margin-top: 28px;
+}
+
+.profile-user-v3 {
+  position: relative;
+  z-index: 2;
+  width: 62%;
+  gap: 16px;
+}
+
+.profile-user-v3__avatar {
+  display: flex;
+  flex: 0 0 96px;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border: 3px solid rgba(255,255,255,.96);
+  border-radius: 50%;
+  background: rgba(232,248,240,.92);
+  color: #147b59;
+  box-shadow: 0 10px 26px rgba(48,104,77,.12);
+  font-size: 33px;
+  font-weight: 800;
+  line-height: 96px;
+  text-align: center;
+}
+
+.profile-user-v3__name {
+  font-size: 32px;
+}
+
+.profile-user-v3__sub {
+  margin-top: 6px;
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+.profile-user-v3__info .badge {
+  margin-top: 9px;
+  padding: 6px 12px;
+}
+
+.profile-hero-v3__quote {
+  position: absolute;
+  z-index: 2;
+  top: 104px;
+  right: 24px;
+  width: 190px;
+  padding: 0;
+  transform: rotate(-3deg);
+}
+
+.profile-hero-v3__quote::after {
+  display: block;
+  width: 154px;
+  height: 2px;
+  margin-top: 7px;
+  background: rgba(29,139,101,.62);
+  content: '';
+  transform: rotate(-7deg);
+}
+
+.profile-hero-v3__quote text {
+  font-size: 20px;
+  line-height: 1.4;
+  letter-spacing: .5px;
+}
+
+.profile-content-v3 {
+  margin-top: -66px;
+  padding-left: 22px;
+  padding-right: 22px;
+  padding-bottom: calc(210px + env(safe-area-inset-bottom));
+}
+
+.profile-stats-v3 {
+  border-radius: 28px;
+  box-shadow: 0 14px 32px rgba(48,91,70,.085);
+}
+
+.profile-stats-v3 > view {
+  padding: 25px 8px 23px;
+}
+
+.profile-stats-v3__number {
+  font-size: 35px;
+}
+
+.profile-stats-v3__label {
+  margin-top: 11px;
+  font-size: 18px;
+}
+
+.profile-section-heading-v3 {
+  margin: 30px 2px 13px;
+}
+
+.profile-section-heading-v3--secondary {
+  margin-top: 28px;
+}
+
+.profile-section-heading-v3 > text:first-child {
+  font-size: 29px;
+}
+
+.profile-section-heading-v3 > text:last-child {
+  font-size: 16px;
+}
+
+.profile-menu-card {
+  border-radius: 27px;
+  box-shadow: 0 10px 26px rgba(48,91,70,.05);
+}
+
+.profile-menu-card__item {
+  min-height: 100px;
+  padding: 0 20px;
+  gap: 15px;
+}
+
+.profile-menu-card__icon {
+  flex-basis: 54px;
+  width: 54px;
+  height: 54px;
+  border-radius: 17px;
+}
+
+.profile-menu-card__title {
+  font-size: 22px;
+}
+
+.profile-menu-card__subtitle {
+  margin-top: 5px;
+  font-size: 17px;
+}
+
+.profile-safety-banner {
+  margin-top: 24px;
+  margin-bottom: 24px;
+  padding: 22px 20px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 91% 104%, rgba(75,166,118,.10) 0 80px, transparent 81px),
+    linear-gradient(135deg, #e7f8f0 0%, #f4fbf7 72%, #edf8f3 100%);
+}
+
+.profile-safety-banner > view:nth-child(2) text:first-child {
+  font-size: 22px;
+}
+
+.profile-safety-banner > view:nth-child(2) text:last-child {
+  font-size: 17px;
+}
