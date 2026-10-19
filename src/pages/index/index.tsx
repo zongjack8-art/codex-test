@@ -10,12 +10,20 @@ import SearchBar from '../../components/SearchBar'
 import SectionTitle from '../../components/SectionTitle'
 import TabNav from '../../components/TabNav'
 import { campusConfig } from '../../config/campus'
-import { categories } from '../../data/mock'
 import { isH5CloudFallback } from '../../services/mode'
 import { getProducts } from '../../services/products'
 import type { Product } from '../../types/market'
 
 const goExplore = (query = '') => Taro.reLaunch({ url: `/pages/categories/index${query}` })
+
+const homeCategories = [
+  { id: 'books', title: '教材', subtitle: '课本资料', icon: 'book', tone: 0 },
+  { id: 'digital', title: '数码', subtitle: '手机电脑', icon: 'laptop', tone: 1 },
+  { id: 'daily', title: '宿舍好物', subtitle: '桌椅收纳', icon: 'bed', tone: 2 },
+  { id: 'fashion', title: '衣物', subtitle: '潮流穿搭', icon: 'shirt', tone: 0 },
+  { id: 'sports', title: '代步', subtitle: '单车滑板', icon: 'bike', tone: 3 },
+  { id: 'other', title: '其他', subtitle: '更多闲置', icon: 'more', tone: 2 }
+] as const
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -44,19 +52,15 @@ export default function HomePage() {
 
     <View className='content-pad'>
       {isH5CloudFallback() && <Text className='mode-banner'>H5 当前使用本机演示数据。</Text>}
-      <SectionTitle title='逛逛分类' subtitle='从校园日常开始发现' action='全部分类' onAction={() => goExplore()} />
-      <View className='category-grid'>
-        {categories.map((item, index) => <View key={item.id} className='category-tile' onClick={() => goExplore(`?category=${item.id}`)}><View className={`category-tile__icon category-tile__icon--${index % 4}`}><Icon name={item.icon} size='lg' /></View><Text>{item.shortName}</Text></View>)}
-        <View className='category-tile' onClick={() => goExplore('?keyword=%E6%AF%95%E4%B8%9A')}><View className='category-tile__icon category-tile__icon--3'><Icon name='spark' size='lg' /></View><Text>毕业季</Text></View>
-        <View className='category-tile' onClick={() => goExplore()}><View className='category-tile__icon category-tile__icon--0'><Icon name='grid' size='lg' /></View><Text>全部好物</Text></View>
+
+      <View className='category-grid category-grid--reference'>
+        {homeCategories.map(item => <View key={item.id} className='category-tile category-tile--reference' onClick={() => goExplore(`?category=${item.id}`)}>
+          <View className={`category-tile__icon category-tile__icon--${item.tone}`}><Icon name={item.icon} size='lg' /></View>
+          <View className='category-tile__copy'><Text className='category-tile__title'>{item.title}</Text><Text className='category-tile__subtitle'>{item.subtitle}</Text></View>
+        </View>)}
       </View>
 
-      <View className='feature-card' onClick={() => goExplore('?keyword=%E6%AF%95%E4%B8%9A')}>
-        <View className='feature-card__content'><Text className='feature-card__eyebrow'>GRADUATION SEASON</Text><Text className='feature-card__title'>{campusConfig.schoolShortName}毕业季 · 好物接力</Text><Text className='feature-card__desc'>带不走的心爱物品，留给下一位同学</Text><View className='feature-card__link'><Text>去看看</Text><Icon name='arrow' size='sm' /></View></View>
-        <View className='feature-card__art'><View className='feature-card__art-circle'><Icon name='package' size='lg' /></View><View className='feature-card__art-dot' /></View>
-      </View>
-
-      <SectionTitle title='刚刚上架' subtitle='发现身边的新鲜闲置' action='查看更多' onAction={() => goExplore()} />
+      <SectionTitle title='推荐好物' action='查看更多' onAction={() => goExplore()} />
       {loading ? <ProductGridSkeleton /> : loadError ? <EmptyState kind='error' title='暂时没能加载好物' description={loadError} action='重试' onAction={load} /> : products.length ? <View className='product-grid'>{products.map(product => <ProductCard key={product.id} product={product} />)}</View> : <EmptyState kind='search' title='还没有上架的好物' description='来发布第一件闲置吧' action='去发布' onAction={() => Taro.reLaunch({ url: '/pages/publish/index' })} />}
       <View className='home-safety'><Icon name='shield' size='md' /><View><Text>安心交易小提示</Text><Text>约在校内公共区域，见面验货后再付款</Text></View></View>
     </View>
