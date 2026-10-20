@@ -1,0 +1,43 @@
+@use './tokens' as t;
+
+// Keep the chat composer inside the visible mini-program viewport. In WeChat's
+// native navigation mode, a 100vh flex page can extend below the visible content
+// area; anchoring the composer to the viewport avoids the input bar being pushed
+// off-screen and gives ScrollView an explicit flex basis.
+.chat-page {
+  box-sizing: border-box;
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 0;
+  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  overflow: hidden;
+  background: #f7faf8;
+}
+
+.chat-scroll {
+  flex: 1 1 0;
+  width: 100%;
+  height: 0;
+  min-height: 0;
+}
+
+.chat-scroll .empty-state {
+  padding-top: 62px;
+  padding-bottom: 36px;
+}
+
+.chat-composer {
+  position: fixed;
+  z-index: 40;
+  right: auto;
+  bottom: 0;
+  left: 50%;
+  width: 100%;
+  max-width: 750px;
+  transform: translateX(-50%);
+  box-shadow: 0 -8px 24px rgba(36, 83, 64, .06);
+}
+
+.chat-safety {
+  color: #71827b;
+}
