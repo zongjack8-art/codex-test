@@ -1,7 +1,7 @@
 import { Image, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useRef, useState } from 'react'
-import profileCampusBg from '../../assets/profile-campus-bg.png'
+import profileCampusBg from '../../assets/profile-campus-bg.jpg'
 import AppButton from '../../components/AppButton'
 import Avatar from '../../components/Avatar'
 import { Badge } from '../../components/Badge'
