@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Badge } from '../../components/Badge'
 import EmptyState from '../../components/EmptyState'
 import ProductPhoto from '../../components/ProductPhoto'
-import { listMyReports, type MyReport, type ReportReason } from '../../services/reports'
+import { listMyReports, markReportResultsRead, type MyReport, type ReportReason } from '../../services/reports'
 import { formatDetailTime } from '../../utils/format'
 
 const reasonLabels: Record<ReportReason, string> = {
@@ -28,7 +28,11 @@ export default function MyReportsPage() {
   const load = async () => {
     setLoading(true)
     setError(false)
-    try { setItems(await listMyReports()) }
+    try {
+      const next = await listMyReports()
+      setItems(next)
+      markReportResultsRead(next)
+    }
     catch { setError(true) }
     finally { setLoading(false) }
   }
