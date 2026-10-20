@@ -120,6 +120,6 @@ export default function ProfilePage() {
 
       {getDataMode() !== 'cloud' && <AppButton variant='ghost' block onClick={session ? () => { signOut(); setSession(null); setProfile(demoUser); Taro.showToast({ title: '已退出演示身份', icon: 'none' }) } : login}>{session ? '退出当前身份' : (getDataMode() === 'api' ? '微信登录' : '进入演示身份')}</AppButton>}
     </View>
-    <TabNav active='profile' orderUnreadCount={orderUnread} adminPendingReports={pendingReports} />
+    <TabNav active='profile' orderUnreadCount={orderUnread} adminPendingReports={pendingReports} reportUnreadCount={reportUnread} />
   </View>
 }
