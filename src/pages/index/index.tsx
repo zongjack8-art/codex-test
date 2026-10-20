@@ -1,7 +1,7 @@
 import { Image, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
-import homeHero from '../../assets/home-campus-hero.png'
+import homeHero from '../../assets/home-campus-hero.jpg'
 import booksIcon from '../../assets/category-icons/books.png'
 import digitalIcon from '../../assets/category-icons/digital.png'
 import dormIcon from '../../assets/category-icons/dorm.png'
