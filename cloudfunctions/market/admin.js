@@ -18,6 +18,30 @@ function createAdminHandler({ db, admins, products, reports, users }) {
     return new Map(result.data.map(user => [user._id, user]))
   }
 
+  async function listOwnReports(openid) {
+    const rows = (await reports.where({ reporterId: openid }).limit(100).get()).data
+      .filter(row => row.type === 'product' && currentSchool(row))
+    rows.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    const ids = [...new Set(rows.map(row => row.productId).filter(Boolean))]
+    const productRows = ids.length ? (await products.where({ _id: db.command.in(ids) }).limit(ids.length).get()).data : []
+    const productMap = new Map(productRows.map(row => [row._id, row]))
+    return rows.map(row => {
+      const product = productMap.get(row.productId)
+      return {
+        id: row._id,
+        productId: row.productId,
+        reason: row.reason,
+        description: row.description || '',
+        createdAt: row.createdAt || 0,
+        status: row.status || 'pending',
+        resolution: row.resolution || null,
+        resolvedAt: row.resolvedAt || null,
+        productTitle: product?.title || '商品已删除',
+        productImage: product?.images?.[0] || ''
+      }
+    })
+  }
+
   // The first admin release scans at most 100 documents and sorts in memory,
   // avoiding any new compound index on the live collections.
   async function listProducts() {
@@ -54,7 +78,9 @@ function createAdminHandler({ db, admins, products, reports, users }) {
   return async function adminAction(action, event, openid) {
     if (action === 'getAdminStatus') {
       const admin = await findAdmin(openid)
-      return { isAdmin: admin?.enabled === true && admin.role === 'admin' }
+      const result = { isAdmin: admin?.enabled === true && admin.role === 'admin' }
+      if (event.includeMyReports === true) result.myReports = await listOwnReports(openid)
+      return result
     }
     await assertAdmin(openid)
     if (action === 'getAdminNotificationSummary') {
