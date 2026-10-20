@@ -60,6 +60,7 @@ export default function ProfilePage() {
 
   const accountMenu: ProfileMenuItem[] = [
     { icon: 'edit', label: '编辑个人资料', subtitle: '完善个人信息，让更多同学认识你', tone: 'green', action: () => Taro.navigateTo({ url: '/pages/profile/edit' }) },
+    { icon: 'shield', label: '我的举报', subtitle: '查看举报进度和平台处理结果', tone: 'peach', action: () => Taro.navigateTo({ url: '/pages/my-reports/index' }) },
     { icon: 'shield', label: '交易安全提醒', subtitle: '校园交易安全小贴士', tone: 'green', action: () => Taro.showModal({ title: '安心面交', content: '优先约在图书馆、食堂等校内公共区域；现场核对商品；不要提前转账。', showCancel: false }) },
     ...(isAdmin ? [{ icon: 'shield' as IconName, label: '管理后台', subtitle: '处理举报和平台管理事项', tone: 'blue' as const, action: () => Taro.navigateTo({ url: '/pages/admin/index' }) }] : []),
     { icon: 'spark', label: '关于校园集市', subtitle: '了解我们和平台规则', tone: 'blue', action: () => Taro.showModal({ title: `关于 ${campusConfig.brandName}`, content: getDataMode() === 'mock' ? `${campusConfig.schoolSlogan}。当前为本机演示版本，数据不会跨设备同步。` : `${campusConfig.schoolSlogan}。通过站内消息约好面交时间地点，验货后双方自行付款；平台不提供支付或担保。`, showCancel: false }) }
