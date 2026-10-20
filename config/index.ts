@@ -1,7 +1,11 @@
 import { defineConfig } from '@tarojs/cli'
 import campus from '../cloudfunctions/market/campus.json'
 
-const dataSource = process.env.TARO_APP_DATA_SOURCE || 'mock'
+// WeChat is the primary runtime for CampusMarket. Default to CloudBase so a
+// development restart cannot silently fall back to per-device mock data when
+// TARO_APP_DATA_SOURCE is omitted. H5 still falls back to mock at runtime via
+// getDataMode(), because cloud mode is only enabled inside WEAPP.
+const dataSource = process.env.TARO_APP_DATA_SOURCE || 'cloud'
 if (!['mock', 'cloud', 'api'].includes(dataSource)) throw new Error('TARO_APP_DATA_SOURCE 只能为 mock、cloud 或 api')
 if (dataSource === 'api' && !process.env.TARO_APP_API_BASE_URL) throw new Error('api 模式需要 TARO_APP_API_BASE_URL')
 
