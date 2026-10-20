@@ -23,6 +23,7 @@ export interface MyReport {
 }
 
 const MOCK_REPORTS_KEY = 'campusmarket.reports.v1'
+const REPORT_RESULTS_SEEN_AT_KEY = 'campusmarket.reportResultsSeenAt.v1'
 
 export async function submitReport(report: ReportInput): Promise<{ created: boolean }> {
   if (getDataMode() === 'cloud') {
@@ -46,4 +47,14 @@ export async function listMyReports(): Promise<MyReport[]> {
     return result.myReports || []
   }
   return []
+}
+
+export function getUnreadReportResultCount(items: MyReport[]): number {
+  const seenAt = readLocal<number>(REPORT_RESULTS_SEEN_AT_KEY, 0)
+  return items.filter(item => item.resolvedAt && item.resolvedAt > seenAt).length
+}
+
+export function markReportResultsRead(items: MyReport[]): void {
+  const latestResolvedAt = items.reduce((latest, item) => Math.max(latest, item.resolvedAt || 0), 0)
+  if (latestResolvedAt > 0) writeLocal(REPORT_RESULTS_SEEN_AT_KEY, latestResolvedAt)
 }
