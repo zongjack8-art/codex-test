@@ -9,6 +9,18 @@ import { readLocal, writeLocal } from './storage'
 
 export type ReportReason = 'prohibited' | 'misleading' | 'fraud' | 'other'
 export interface ReportInput { productId: string; reason: ReportReason; description?: string }
+export interface MyReport {
+  id: string
+  productId: string
+  reason: ReportReason
+  description: string
+  createdAt: number
+  status: 'pending' | 'resolved' | 'dismissed'
+  resolution: 'takedown' | 'dismiss' | null
+  resolvedAt: number | null
+  productTitle: string
+  productImage: string
+}
 
 const MOCK_REPORTS_KEY = 'campusmarket.reports.v1'
 
@@ -25,4 +37,13 @@ export async function submitReport(report: ReportInput): Promise<{ created: bool
   if (existing.some(item => item.productId === report.productId)) return { created: false }
   writeLocal(MOCK_REPORTS_KEY, [...existing, { ...report, school: campusConfig.schoolName, createdAt: new Date().toISOString() }])
   return { created: true }
+}
+
+export async function listMyReports(): Promise<MyReport[]> {
+  if (getDataMode() === 'cloud') {
+    await ensureUserSession()
+    const result = await cloudCall<{ isAdmin: boolean; myReports?: MyReport[] }>('getAdminStatus', { includeMyReports: true })
+    return result.myReports || []
+  }
+  return []
 }
