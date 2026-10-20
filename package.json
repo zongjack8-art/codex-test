@@ -4,9 +4,9 @@
   "private": true,
   "description": "CampusMarket 校园二手平台",
   "scripts": {
-    "dev:weapp": "cross-env TARO_BUILD_TARGET=weapp taro build --type weapp --watch",
+    "dev:weapp": "cross-env TARO_BUILD_TARGET=weapp TARO_APP_DATA_SOURCE=cloud taro build --type weapp --watch",
     "dev:h5": "cross-env TARO_BUILD_TARGET=h5 taro build --type h5 --watch",
-    "build:weapp": "cross-env TARO_BUILD_TARGET=weapp taro build --type weapp",
+    "build:weapp": "cross-env TARO_BUILD_TARGET=weapp TARO_APP_DATA_SOURCE=cloud taro build --type weapp",
     "build:h5": "cross-env TARO_BUILD_TARGET=h5 taro build --type h5",
     "typecheck": "tsc --noEmit",
     "test:cloud": "node --test cloudfunctions/market/*.test.js"
