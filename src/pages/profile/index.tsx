@@ -14,6 +14,7 @@ import { getCurrentUser, getSession, loginWithWechat, signOut } from '../../serv
 import { getDataMode, isH5CloudFallback } from '../../services/mode'
 import { getOrderUnreadSummary } from '../../services/orders'
 import { getFavoriteIds, getMyProducts } from '../../services/products'
+import { getUnreadReportResultCount, listMyReports } from '../../services/reports'
 import type { Session, UserProfile } from '../../types/market'
 import { unreadCountLabel } from '../../utils/orders'
 
@@ -28,6 +29,7 @@ export default function ProfilePage() {
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [soldCount, setSoldCount] = useState(0)
   const [orderUnread, setOrderUnread] = useState(0)
+  const [reportUnread, setReportUnread] = useState(0)
   const { isAdmin, pendingReports } = useAdminNotifications()
   const unreadRequest = useRef(0)
 
@@ -44,6 +46,7 @@ export default function ProfilePage() {
     loadProfile()
     getMyProducts().then(items => { setListingCount(items.length); setSoldCount(items.filter(item => item.status === 'sold').length) }).catch(() => undefined)
     getFavoriteIds().then(ids => setFavoriteCount(ids.length)).catch(() => undefined)
+    listMyReports().then(items => setReportUnread(getUnreadReportResultCount(items))).catch(() => setReportUnread(0))
   })
 
   const login = async () => {
@@ -70,6 +73,7 @@ export default function ProfilePage() {
     <View className={`profile-menu-card__icon profile-menu-card__icon--${item.tone || 'green'}`}><Icon name={item.icon} size='md' /></View>
     <View className='profile-menu-card__copy'><Text className='profile-menu-card__title'>{item.label}</Text><Text className='profile-menu-card__subtitle'>{item.subtitle}</Text></View>
     {item.label === '我的订单' && orderUnread > 0 && <Badge tone='danger' className='menu-card__unread'>{unreadCountLabel(orderUnread)}</Badge>}
+    {item.label === '我的举报' && reportUnread > 0 && <Badge tone='danger' className='menu-card__unread'>{unreadCountLabel(reportUnread)}</Badge>}
     {item.label === '管理后台' && isAdmin && pendingReports > 0 && <Badge tone='danger' className='menu-card__unread'>{unreadCountLabel(pendingReports)}</Badge>}
     <Icon name='chevron' size='sm' className='profile-menu-card__arrow' />
   </View>)}</View>
