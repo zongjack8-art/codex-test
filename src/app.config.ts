@@ -21,7 +21,7 @@ export default defineAppConfig({
     'pages/profile/edit'
   ],
   window: {
-    navigationBarTitleText: '校园集市',
+    navigationBarTitleText: '青拾 ReHub',
     navigationBarBackgroundColor: '#f5f8f7',
     navigationBarTextStyle: 'black',
     backgroundColor: '#f5f8f7'

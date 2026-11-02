@@ -5,6 +5,7 @@ import AppButton from '../../../components/AppButton'
 import { Badge } from '../../../components/Badge'
 import EmptyState from '../../../components/EmptyState'
 import ProductPhoto from '../../../components/ProductPhoto'
+import { campusConfig } from '../../../config/campus'
 import { adminListReports, adminResolveReport, getAdminStatus, type AdminReport } from '../../../services/admin'
 import { formatDetailTime } from '../../../utils/format'
 import './index.scss'
@@ -57,7 +58,7 @@ export default function AdminReportsPage() {
           <View className='admin-card__main'><ProductPhoto src={item.productImage} className='admin-card__photo' /><View className='admin-card__body'><Text className='admin-card__title'>{item.productTitle}</Text><View className='admin-card__badges'><Badge tone={item.status === 'pending' ? 'warning' : item.status === 'resolved' ? 'success' : 'neutral'}>{item.status === 'pending' ? '待处理' : item.status === 'resolved' ? '已下架' : '已驳回'}</Badge></View><Text className='admin-card__meta'>{reasonLabels[item.reason] || '其他'} · {formatDetailTime(item.createdAt)}</Text><Text className='admin-card__meta'>卖家：{item.sellerNickname}</Text></View></View>
           {item.description && <Text className='admin-card__description'>{item.description}</Text>}
           {item.status === 'pending' && <View className='admin-card__actions'><AppButton variant='secondary' loading={pendingId === item.id} onClick={() => resolve(item, 'dismiss')}>驳回举报</AppButton><AppButton variant='danger' loading={pendingId === item.id} onClick={() => resolve(item, 'takedown')}>确认违规并下架</AppButton></View>}
-        </View>) : <EmptyState kind='listings' title={tab === 'pending' ? '没有待处理举报' : '还没有处理记录'} description='校园集市的每一条反馈都会被认真对待' />}
+        </View>) : <EmptyState kind='listings' title={tab === 'pending' ? '没有待处理举报' : '还没有处理记录'} description={`${campusConfig.brandName} 的每一条反馈都会被认真对待`} />}
       </>}
     </View>
   </View>

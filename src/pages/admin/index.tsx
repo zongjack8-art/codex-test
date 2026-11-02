@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { Badge } from '../../components/Badge'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
+import { campusConfig } from '../../config/campus'
 import { useAdminNotifications } from '../../hooks/useAdminNotifications'
 import { unreadCountLabel } from '../../utils/orders'
 import './index.scss'
@@ -11,7 +12,7 @@ export default function AdminPage() {
   const { isAdmin: allowed, pendingReports } = useAdminNotifications()
 
   return <View className='page'>
-    <View className='page-heading'><Text className='page-heading__eyebrow'>CAMPUS CARE</Text><Text className='page-heading__title'>管理员后台</Text><Text className='page-heading__desc'>校园集市内容管理</Text></View>
+    <View className='page-heading'><Text className='page-heading__eyebrow'>CAMPUS CARE</Text><Text className='page-heading__title'>管理员后台</Text><Text className='page-heading__desc'>{campusConfig.brandName} 内容管理</Text></View>
     <View className='content-pad admin-content'>
       {allowed === null ? <View className='listing-skeleton'><View /></View> : !allowed ? <EmptyState kind='error' title='你没有管理员权限' description='管理入口仅对已授权的校园管理员开放' action='返回我的' onAction={() => Taro.reLaunch({ url: '/pages/profile/index' })} /> : <>
         <View className='admin-entry' onClick={() => Taro.navigateTo({ url: '/pages/admin/products/index' })}><View className='admin-entry__icon'><Icon name='package' size='md' /></View><View><Text className='admin-entry__title'>商品管理</Text><Text className='admin-entry__desc'>查看全部商品并处理违规商品</Text></View><Icon name='chevron' size='sm' /></View>
