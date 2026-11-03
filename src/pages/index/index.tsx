@@ -48,7 +48,7 @@ export default function HomePage() {
       <View className='home-hero__veil' />
       <View className='home-brand'>
         <View className='home-brand__mark'><Text>C</Text></View>
-        <View><Text className='home-brand__name'>{campusConfig.brandName}</Text><Text className='home-brand__sub'>{campusConfig.brandChineseName}</Text></View>
+        <View className='home-brand__copy'><Text className='home-brand__name'>{campusConfig.brandName}</Text><Text className='home-brand__sub'>{campusConfig.brandChineseName}</Text></View>
         <View className='home-brand__campus'><Icon name='pin' size='sm' /><Text>{campusConfig.schoolName}</Text></View>
       </View>
       <View className='home-hero__copy'><Text className='home-hero__eyebrow'>{campusConfig.schoolSlogan}</Text><Text className='home-hero__title'>发现同学的好东西，<Text>让闲置继续发光。</Text></Text><Text className='home-hero__desc'>在熟悉的校园里，买卖都更轻松。</Text></View>
