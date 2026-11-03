@@ -142,19 +142,19 @@
 .messages-page .messages-summary > view { min-width: 0; }
 .messages-page .messages-summary text:first-child { display: block; color: #29483d; font-size: 22px; font-weight: 800; }
 .messages-page .messages-summary__hint { display: block; margin-top: 3px; color: #9aa8a2; font-size: 16px; }
-.messages-page .conversation-list { display: flex; flex-direction: column; gap: 12px; }
-.messages-page .conversation-card { position: relative; gap: 14px; margin-bottom: 0; padding: 17px; border: 1px solid #e0ece5; border-radius: 24px; background: #fff; box-shadow: 0 9px 23px rgba(47, 88, 68, .055); }
+.messages-page .conversation-list { display: flex; flex-direction: column; gap: 16px; }
+.messages-page .conversation-card { position: relative; gap: 18px; margin-bottom: 0; padding: 20px; border: 1px solid #e0ece5; border-radius: 24px; background: #fff; box-shadow: 0 9px 23px rgba(47, 88, 68, .055); }
 .messages-page .conversation-card.is-unread { border-color: #d2eadf; background: linear-gradient(145deg, #ffffff 0%, #fbfffc 100%); }
 .messages-page .conversation-card__avatar-wrap { position: relative; flex: 0 0 auto; }
-.messages-page .conversation-card__avatar { flex-basis: 62px; width: 62px; height: 62px; background: linear-gradient(145deg, #e7f7ef, #dff2e9); color: #187d5c; font-size: 22px; }
+.messages-page .conversation-card__avatar { flex-basis: 72px; width: 72px; height: 72px; background: linear-gradient(145deg, #e7f7ef, #dff2e9); color: #187d5c; font-size: 24px; }
 .messages-page .conversation-card__dot { position: absolute; top: 1px; right: -1px; width: 13px; height: 13px; border: 3px solid #fff; border-radius: 50%; background: #f05f4b; }
-.messages-page .conversation-card__top { align-items: baseline; }
-.messages-page .conversation-card__name { color: #203c32; font-size: 22px; }
-.messages-page .conversation-card__time { color: #a1ada8; font-size: 16px; }
-.messages-page .conversation-card__preview { display: block; overflow: hidden; margin-top: 5px; color: #667a72; font-size: 18px; text-overflow: ellipsis; white-space: nowrap; }
-.messages-page .conversation-card__product { margin: 9px 0 0; padding: 7px 9px; border-radius: 16px; background: #f5f8f6; }
-.messages-page .conversation-card__photo { flex-basis: 48px; width: 48px; height: 48px; border-radius: 12px; }
-.messages-page .conversation-card__product > text { color: #7b8984; font-size: 17px; }
+.messages-page .conversation-card__top { align-items: center; }
+.messages-page .conversation-card__name { flex: 1; min-width: 0; color: #203c32; font-size: 24px; font-weight: 800; }
+.messages-page .conversation-card__time { color: #a6b2ac; font-size: 15px; white-space: nowrap; }
+.messages-page .conversation-card__preview { display: block; overflow: hidden; margin-top: 9px; color: #667a72; font-size: 19px; text-overflow: ellipsis; white-space: nowrap; }
+.messages-page .conversation-card__product { align-items: center; gap: 16px; min-height: 80px; margin: 11px 0 0; padding: 10px 12px; border-radius: 16px; background: #f5f8f6; }
+.messages-page .conversation-card__photo { flex-basis: 60px; width: 60px; height: 60px; border-radius: 12px; }
+.messages-page .conversation-card__product > text { display: block; flex: 1; min-width: 0; color: #7b8984; font-size: 18px; line-height: 1.4; }
 
 .profile-page {
   position: relative;

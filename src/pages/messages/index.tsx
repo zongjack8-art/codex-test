@@ -34,7 +34,7 @@ export default function MessagesPage() {
   useEffect(() => { poller.current?.start(); return () => poller.current?.stop() }, [])
 
   return <View className='page page--with-nav messages-page'>
-    <View className='page-heading'><Text className='page-heading__eyebrow'>CAMPUS CONVERSATIONS</Text><Text className='page-heading__title'>消息</Text><Text className='page-heading__desc'>和同学聊聊好物，约个方便的校内地点。</Text></View>
+    <View className='page-heading'><Text className='page-heading__eyebrow'>青拾消息</Text><Text className='page-heading__title'>消息</Text><Text className='page-heading__desc'>和同学聊聊好物，沟通更简单</Text></View>
     <View className='content-pad messages-content'>
       {isH5CloudFallback() && <Text className='mode-banner'>H5 当前使用本机演示消息。</Text>}
       {loading ? <View className='listing-skeleton'><View /><View /></View> : error ? <EmptyState kind='error' title='暂时没能加载消息' description='检查网络后再试一次' action='重试' onAction={() => { void poller.current?.refresh(false) }} /> : items.length ? <>
