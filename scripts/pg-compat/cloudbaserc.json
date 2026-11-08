@@ -1,0 +1,15 @@
+{
+  "envId": "additional-orangutan-d3abd2399c3",
+  "functions": [
+    {
+      "name": "rehub_pg_compat",
+      "type": "Event",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 10,
+      "envVariables": {
+        "REHUB_PG_PROBE_APP_ID": "wxdb3e3d718940eae6"
+      }
+    }
+  ]
+}

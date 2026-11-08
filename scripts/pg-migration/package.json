@@ -1,0 +1,17 @@
+{
+  "name": "rehub-pg-migration",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "simulate": "node simulate.mjs",
+    "test": "node --test migration.test.mjs market-batch-one.test.mjs market-batch-two.test.mjs market-batch-three.test.mjs",
+    "test:release": "node --test release.test.mjs",
+    "test:concurrency": "node --test market-batch-two-native.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.4.6"
+  }
+}

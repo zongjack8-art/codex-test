@@ -1,0 +1,14 @@
+{
+  "name": "rehub-pg-compat",
+  "private": true,
+  "version": "0.1.0",
+  "main": "index.js",
+  "engines": { "node": ">=20.19.0" },
+  "scripts": {
+    "test": "node --test index.test.js"
+  },
+  "dependencies": {
+    "@cloudbase/js-sdk": "3.11.0",
+    "wx-server-sdk": "4.0.2"
+  }
+}

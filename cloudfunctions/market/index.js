@@ -1,3 +1,8 @@
+if (process.env.REHUB_MARKET_BACKEND === 'postgresql') {
+  exports.main = require('./pg-market').createRuntime()
+  return
+}
+
 const cloud = require('wx-server-sdk')
 
 const { randomUUID } = require('node:crypto')
@@ -8,7 +13,7 @@ const { createAdminHandler } = require('./admin')
 const { createReviewHandler } = require('./reviews')
 const { createRecentViewsHandler } = require('./recent-views')
 const {
-  AppError, CATEGORIES, MAX_IMAGE_BYTES, fail, cleanText, safeId,
+  AppError, MAX_IMAGE_BYTES, fail, safeId, productFilters, imageExtension,
   ownImage, incomingImage, validateProduct, validateProfile, validateReport, favoriteId, assertOwner, productStatus, assertStatusTransition, escapeRegExp
 } = require('./security')
 
@@ -130,23 +135,12 @@ async function cleanProductFiles(fileIDs, openid, productId) {
 
 async function run(action, event) {
   if (action === 'listProducts') {
-    const filters = event.filters || {}
-    const category = filters.category && filters.category !== 'all' ? filters.category : undefined
-    if (category && !CATEGORIES.has(category)) fail('INVALID_INPUT', '商品分类无效')
-    const keyword = filters.keyword == null || filters.keyword === '' ? '' : cleanText(filters.keyword, '关键词', 0, 40)
-    const bound = (value, label) => {
-      if (value == null) return undefined
-      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100000) fail('INVALID_INPUT', `${label}无效`)
-      return value
-    }
-    const minPrice = bound(filters.minPrice, '最低价格')
-    const maxPrice = bound(filters.maxPrice, '最高价格')
-    if (minPrice !== undefined && maxPrice !== undefined && minPrice >= maxPrice) fail('INVALID_INPUT', '价格区间无效')
+    const { category, keyword, minPrice, maxPrice, sort: order } = productFilters(event.filters || {})
     const price = minPrice !== undefined && maxPrice !== undefined ? _.gte(minPrice).and(_.lt(maxPrice)) : minPrice !== undefined ? _.gte(minPrice) : maxPrice !== undefined ? _.lt(maxPrice) : undefined
     const base = { status: _.in(['selling', 'active', 'reserved']), school: campus.schoolName, ...(category ? { category } : {}), ...(price ? { price } : {}) }
     const regex = keyword ? db.RegExp({ regexp: escapeRegExp(keyword), options: 'i' }) : null
     const condition = regex ? _.or([{ ...base, title: regex }, { ...base, description: regex }]) : base
-    const sort = filters.sort === 'priceAsc' ? ['price', 'asc'] : filters.sort === 'priceDesc' ? ['price', 'desc'] : ['createdAt', 'desc']
+    const sort = order === 'priceAsc' ? ['price', 'asc'] : order === 'priceDesc' ? ['price', 'desc'] : ['createdAt', 'desc']
     const result = await products.where(condition).orderBy(sort[0], sort[1]).limit(50).get()
     const items = await hydrate(result.data.filter(item => item.moderationStatus !== 'blocked'))
     // List cards only need display fields. Seller OPENIDs and internal moderation data stay on the server.
@@ -190,45 +184,7 @@ async function run(action, event) {
         fail('INVALID_IMAGE', '图片不得超过 5 MB')
       }
   
-      let extension = ''
-  
-      // JPEG
-      if (
-        data.length >= 3 &&
-        data[0] === 0xff &&
-        data[1] === 0xd8 &&
-        data[2] === 0xff
-      ) {
-        extension = 'jpg'
-      }
-  
-      // PNG
-      else if (
-        data.length >= 8 &&
-        data[0] === 0x89 &&
-        data[1] === 0x50 &&
-        data[2] === 0x4e &&
-        data[3] === 0x47 &&
-        data[4] === 0x0d &&
-        data[5] === 0x0a &&
-        data[6] === 0x1a &&
-        data[7] === 0x0a
-      ) {
-        extension = 'png'
-      }
-  
-      // WebP
-      else if (
-        data.length >= 12 &&
-        data.toString('ascii', 0, 4) === 'RIFF' &&
-        data.toString('ascii', 8, 12) === 'WEBP'
-      ) {
-        extension = 'webp'
-      }
-  
-      if (!extension) {
-        fail('INVALID_IMAGE', '只支持 JPEG、PNG 或 WebP 图片')
-      }
+      const extension = imageExtension(data)
   
       const folder = purpose === 'avatar' ? 'avatars' : 'images'
   

@@ -37,6 +37,7 @@ function mountTabNav(props, getSummary) {
     '../hooks/useAdminNotifications': { useAdminNotifications: () => ({ pendingReports: 0 }) },
     '../services/chat': { getUnreadMessageCount: async () => 0 },
     '../services/orders': { getOrderUnreadSummary: getSummary },
+    '../services/reports': { getUnreadReportResultCount: () => 0, listMyReports: async () => [] },
     '../utils/orders': { unreadCountLabel: count => count > 99 ? '99+' : String(count) },
     '../utils/visiblePoller': { createVisiblePoller: (task, delay) => createVisiblePoller(task, delay, scheduler) },
     './Icon': { __esModule: true, default: () => null }
@@ -71,7 +72,7 @@ function mountTabNav(props, getSummary) {
 
 test('首页可见时订单未读立即读取并每 5 秒刷新；失败保留数字，隐藏停止，返回立即刷新', async () => {
   let total = 0, fail = false, calls = 0
-  const page = mountTabNav({ active: 'index', unreadCount: 0, adminPendingReports: 0 }, async () => {
+  const page = mountTabNav({ active: 'index', unreadCount: 0, adminPendingReports: 0, reportUnreadCount: 0 }, async () => {
     calls++
     if (fail) throw new Error('network')
     return { buyer: 0, seller: total, total }
@@ -100,7 +101,7 @@ test('首页可见时订单未读立即读取并每 5 秒刷新；失败保留�
 
 test('父组件明确传入订单未读数时不启动订单轮询', async () => {
   let calls = 0
-  const page = mountTabNav({ active: 'profile', unreadCount: 0, orderUnreadCount: 7, adminPendingReports: 0 }, async () => {
+  const page = mountTabNav({ active: 'profile', unreadCount: 0, orderUnreadCount: 7, adminPendingReports: 0, reportUnreadCount: 0 }, async () => {
     calls++
     return { buyer: 0, seller: 99, total: 99 }
   })

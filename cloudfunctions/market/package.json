@@ -5,7 +5,7 @@
   "main": "index.js",
   "engines": { "node": ">=20.3.0" },
   "dependencies": {
-
+    "@cloudbase/js-sdk": "3.11.0",
     "wx-server-sdk": "4.0.2"
   }
 }
